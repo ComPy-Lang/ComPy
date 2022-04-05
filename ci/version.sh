@@ -13,6 +13,6 @@
 
 set -ex
 
-version=$(git describe --tags)
+version=$(git describe --tags --dirty)
 version="${version:1}"
 echo $version > version

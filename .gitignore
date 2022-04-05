@@ -15,7 +15,7 @@ _CPack_Packages
 version
 src/libasr/config.h
 src/libasr/asr.h
-src/bin/lpython
+src/bin/compy
 inst/*
 
 ## libraries
