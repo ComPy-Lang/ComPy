@@ -10,3 +10,27 @@ CPackConfig.cmake
 CPackSourceConfig.cmake
 _CPack_Packages
 /CMakeSettings.json
+
+## Generated files
+version
+src/libasr/config.h
+src/libasr/asr.h
+src/bin/lpython
+inst/*
+
+## libraries
+*.a
+*.so
+*.s
+*.ll
+*.dylib
+*.dSYM
+
+## Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+## Editor Files
+.vscode/
+.vs/
