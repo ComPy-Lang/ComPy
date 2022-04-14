@@ -27,6 +27,25 @@ void Tokenizer::set_string(const std::string &str)
 
 int Tokenizer::lex(Allocator &/*al*/, YYSTYPE &yylval, Location &loc, diag::Diagnostics &/*diagnostics*/)
 {
+    if(dedent == 1) {
+        // Removes the indent completely i.e., to level 0
+        if(!indent_length.empty()) {
+            indent_length.pop_back();
+            return yytokentype::TK_DEDENT;
+        } else {
+            dedent = 0;
+        }
+    } else if(dedent == 2) {
+        // Reduce the indent to `last_indent_length`
+        if((long int)indent_length.back() != last_indent_length) {
+            indent_length.pop_back();
+            loc.first = loc.last;
+            return yytokentype::TK_DEDENT;
+        } else {
+            dedent = 0;
+        }
+    }
+
     for (;;) {
         tok = cur;
 
@@ -118,6 +137,22 @@ int Tokenizer::lex(Allocator &/*al*/, YYSTYPE &yylval, Location &loc, diag::Diag
             }
             end { RET(END_OF_FILE); }
             whitespace {
+                if (indent) {
+                    indent = false;
+                    indent_length.push_back(cur-tok);
+                    last_indent_length = cur-tok;
+                    RET(TK_INDENT);
+                } else {
+                    if(last_token == yytokentype::TK_NEWLINE && cur[0] != ' '
+                            && last_indent_length > cur-tok) {
+                        last_indent_length = cur-tok;
+                        dedent = 2;
+                        if (!indent_length.empty()) {
+                            indent_length.pop_back();
+                        }
+                        RET(TK_DEDENT);
+                    }
+                }
                 continue;
              }
 
@@ -155,6 +190,13 @@ int Tokenizer::lex(Allocator &/*al*/, YYSTYPE &yylval, Location &loc, diag::Diag
 
             // Tokens
             newline {
+                if (last_token == yytokentype::TK_COLON) {
+                    indent = true;
+                } else if (cur[0] != ' ' && cur[0] != '\n'
+                        && last_indent_length > cur-tok) {
+                    last_indent_length = 0;
+                    dedent = 1;
+                }
                 RET(TK_NEWLINE);
             }
 
