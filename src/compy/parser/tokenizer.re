@@ -8,6 +8,43 @@
 namespace LFortran
 {
 
+template<int base>
+bool adddgt(uint64_t &u, uint64_t d)
+{
+    if (u > (std::numeric_limits<uint64_t>::max() - d) / base) {
+        return false;
+    }
+    u = u * base + d;
+    return true;
+}
+
+bool lex_dec(const unsigned char *s, const unsigned char *e, uint64_t &u)
+{
+    for (u = 0; s < e; ++s) {
+        if (!adddgt<10>(u, *s - 0x30u)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+void lex_int(Allocator &al, const unsigned char *s,
+    const unsigned char *e, BigInt::BigInt &u)
+{
+    uint64_t ui;
+    if (lex_dec(s, e, ui)) {
+        if (ui <= BigInt::MAX_SMALL_INT) {
+            u.from_smallint(ui);
+            return;
+        }
+    }
+    const unsigned char *start = s;
+    Str num;
+    num.p = (char*)start;
+    num.n = e-start;
+    u.from_largeint(al, num);
+    return;
+}
 
 void Tokenizer::set_string(const std::string &str)
 {
@@ -25,7 +62,7 @@ void Tokenizer::set_string(const std::string &str)
 #define RET(x) token_loc(loc); last_token=yytokentype::x; return yytokentype::x;
 
 
-int Tokenizer::lex(Allocator &/*al*/, YYSTYPE &yylval, Location &loc, diag::Diagnostics &/*diagnostics*/)
+int Tokenizer::lex(Allocator &al, YYSTYPE &yylval, Location &loc, diag::Diagnostics &/*diagnostics*/)
 {
     if(dedent == 1) {
         // Removes the indent completely i.e., to level 0
@@ -264,7 +301,11 @@ int Tokenizer::lex(Allocator &/*al*/, YYSTYPE &yylval, Location &loc, diag::Diag
             'False' { RET(TK_FALSE) }
 
             float { token(yylval.string); RET(TK_FLOAT) }
-            integer { token(yylval.string); RET(TK_INTEGER) }
+            integer {
+                lex_int(al, tok, cur,
+                    yylval.int_suffix.int_n);
+                RET(TK_INTEGER)
+            }
 
             comment newline {
                 line_num++; cur_line=cur;
@@ -451,7 +492,7 @@ std::string pickle_token(int token, const LFortran::YYSTYPE &yystype)
     if (token == yytokentype::TK_NAME) {
         t += " " + yystype.string.str();
     } else if (token == yytokentype::TK_INTEGER) {
-        t += " " + yystype.string.str();
+        t += " " + yystype.int_suffix.int_n.str();
     } else if (token == yytokentype::TK_FLOAT) {
         t += " " + yystype.string.str();
     } else if (token == yytokentype::TK_STRING) {
