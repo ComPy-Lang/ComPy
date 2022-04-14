@@ -17,6 +17,7 @@ src/libasr/config.h
 src/libasr/asr.h
 src/bin/compy
 inst/*
+src/compy/parser/tokenizer.cpp
 
 ## libraries
 *.a
