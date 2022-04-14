@@ -13,7 +13,7 @@ llvm-config --components
 bash ci/version.sh
 
 # Generate a Fortran ASR from ASR.asdl (C++)
-python grammar/asdl_cpp.py src/libasr/ASR.asdl src/libasr/asr.h
+python grammar/asdl_cpp.py grammar/ASR.asdl src/libasr/asr.h
 
 # Generate the tokenizer
 pushd src/compy/parser && re2c -W -b tokenizer.re -o tokenizer.cpp && popd
