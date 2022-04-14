@@ -4,6 +4,7 @@
 #include <bin/CLI11.hpp>
 
 #include <compy/utils.h>
+#include <compy/parser/tokenizer.h>
 
 
 namespace {
@@ -26,10 +27,35 @@ std::string read_file(const std::string &filename)
     return std::string(&bytes[0], filesize);
 }
 
-int emit_tokens(const std::string &infile, bool /*line_numbers*/, const CompilerOptions &/*compiler_options*/)
+int emit_tokens(const std::string &infile, bool line_numbers,
+                const CompilerOptions &compiler_options)
 {
     std::string input = read_file(infile);
-    // To be implemented
+    // Src -> Tokens
+    Allocator al(64*1024*1024);
+    std::vector<int> toks;
+    std::vector<LFortran::YYSTYPE> stypes;
+    std::vector<LFortran::Location> locations;
+    LFortran::diag::Diagnostics diagnostics;
+    auto res = LFortran::tokens(al, input, diagnostics, &stypes, &locations);
+    LFortran::LocationManager lm;
+    lm.in_filename = infile;
+    lm.init_simple(input);
+    std::cerr << diagnostics.render(input, lm, compiler_options);
+    if (res.ok) {
+        toks = res.result;
+    } else {
+        LFORTRAN_ASSERT(diagnostics.has_error())
+        return 1;
+    }
+
+    for (size_t i=0; i < toks.size(); i++) {
+        std::cout << LFortran::pickle_token(toks[i], stypes[i]);
+        if (line_numbers) {
+            std::cout << " " << locations[i].first << ":" << locations[i].last;
+        }
+        std::cout << std::endl;
+    }
     return 0;
 }
 
