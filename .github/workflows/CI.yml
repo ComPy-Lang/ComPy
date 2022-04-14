@@ -41,7 +41,6 @@ jobs:
         shell: bash -l {0}
         run: |
             echo "LFORTRAN_CMAKE_GENERATOR=Unix Makefiles" >> $GITHUB_ENV
-            echo "WIN=0" >> $GITHUB_ENV
             echo "MACOS=0" >> $GITHUB_ENV
 
       - name: Setup Platform (macOS)
@@ -49,7 +48,6 @@ jobs:
         shell: bash -l {0}
         run: |
             echo "LFORTRAN_CMAKE_GENERATOR=Unix Makefiles" >> $GITHUB_ENV
-            echo "WIN=0" >> $GITHUB_ENV
             echo "MACOS=1" >> $GITHUB_ENV
 
       - name: Build (Linux / macOS)
