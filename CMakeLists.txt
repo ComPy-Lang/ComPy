@@ -145,28 +145,6 @@ if (WITH_LLVM)
     set(HAVE_LFORTRAN_LLVM yes)
 endif()
 
-# XEUS (Fortran kernel)
-set(WITH_XEUS no CACHE BOOL "Build with XEUS support")
-if (WITH_XEUS)
-    find_package(xeus 0.24.1 REQUIRED)
-    set(HAVE_LFORTRAN_XEUS yes)
-
-    # Generate kernel.json with correct paths
-    configure_file (
-        "${CMAKE_CURRENT_SOURCE_DIR}/share/jupyter/kernels/fortran/kernel.json.in"
-        "${CMAKE_CURRENT_BINARY_DIR}/share/jupyter/kernels/fortran/kernel.json"
-    )
-
-    # Configuration and data directories for Jupyter and LFortran
-    set(XJUPYTER_DATA_DIR "share/jupyter" CACHE STRING "Jupyter data directory")
-
-    # Install Jupyter kernelspecs
-    set(XEUS_CALCSPEC_DIR ${CMAKE_CURRENT_BINARY_DIR}/share/jupyter/kernels)
-    install(DIRECTORY ${XEUS_CALCSPEC_DIR}
-            DESTINATION ${XJUPYTER_DATA_DIR}
-            PATTERN "*.in" EXCLUDE)
-endif()
-
 # JSON
 set(WITH_JSON no CACHE BOOL "Build with JSON support")
 if (WITH_JSON)
@@ -260,7 +238,6 @@ message("WITH_LINKH: ${WITH_LINKH}")
 message("WITH_MACHO: ${WITH_MACHO}")
 message("HAVE_LFORTRAN_DEMANGLE: ${HAVE_LFORTRAN_DEMANGLE}")
 message("WITH_LLVM: ${WITH_LLVM}")
-message("WITH_XEUS: ${WITH_XEUS}")
 message("WITH_JSON: ${WITH_JSON}")
 message("WITH_FMT: ${WITH_FMT}")
 message("WITH_LFORTRAN_BINARY_MODFILES: ${WITH_LFORTRAN_BINARY_MODFILES}")
