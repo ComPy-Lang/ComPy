@@ -11,18 +11,11 @@ set(SRC
 
     ../bin/tpl/whereami/whereami.cpp
 )
-if (WITH_XEUS)
-    set(SRC ${SRC}
-#        fortran_kernel.cpp
-    )
-endif()
+
 add_library(compy_lib ${SRC})
 target_link_libraries(compy_lib asr compy_runtime_static ZLIB::ZLIB)
 target_include_directories(compy_lib BEFORE PUBLIC ${compy_SOURCE_DIR}/src)
 target_include_directories(compy_lib BEFORE PUBLIC ${compy_BINARY_DIR}/src)
-if (WITH_XEUS)
-    target_link_libraries(compy_lib xeus)
-endif()
 if (WITH_BFD)
     target_link_libraries(compy_lib p::bfd)
 endif()
