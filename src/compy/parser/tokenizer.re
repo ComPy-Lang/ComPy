@@ -307,18 +307,7 @@ int Tokenizer::lex(Allocator &al, YYSTYPE &yylval, Location &loc, diag::Diagnost
                 RET(TK_INTEGER)
             }
 
-            comment newline {
-                line_num++; cur_line=cur;
-                token(yylval.string);
-                yylval.string.n--;
-                token_loc(loc);
-                if (last_token == yytokentype::TK_NEWLINE) {
-                    return yytokentype::TK_COMMENT;
-                } else {
-                    last_token=yytokentype::TK_NEWLINE;
-                    return yytokentype::TK_EOLCOMMENT;
-                }
-            }
+            comment newline { continue; }
 
             string1 { token_str(yylval.string); RET(TK_STRING) }
             string2 { token_str(yylval.string); RET(TK_STRING) }

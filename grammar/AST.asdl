@@ -6,12 +6,26 @@ module ComPy
     mod = Module(stmt* body)
 
     stmt = Expr(expr value)
+         | Return(expr? value)
+         | Assign(expr* targets, expr value)
+         | AugAssign(expr target, operator op, expr value)
 
     expr = BinOp(expr left, operator op, expr right)
+         | UnaryOp(unaryop op, expr operand)
+         | Compare(expr left, cmpop ops, expr* comparators)
+
+         | ConstantStr(string value, string? kind)
          | ConstantInt(int value, string? kind)
+         | ConstantBool(bool value, string? kind)
+         | ConstantFloat(float value, string? kind)
+
          | Name(identifier id, expr_context ctx)
 
     expr_context = Load | Store | Del
 
     operator = Add | Sub | Mult | Div | Mod | Pow
+
+    unaryop = UAdd | USub
+
+    cmpop = Eq | NotEq | Lt | LtE | Gt | GtE
 }

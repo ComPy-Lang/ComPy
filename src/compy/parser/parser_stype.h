@@ -21,6 +21,8 @@ union YYSTYPE {
 
     ComPy::AST::ast_t* ast;
     Vec<ComPy::AST::ast_t*> vec_ast;
+
+    ComPy::AST::operatorType operator_type;
 };
 
 static_assert(std::is_standard_layout<YYSTYPE>::value);
