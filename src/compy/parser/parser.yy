@@ -185,10 +185,7 @@ void yyerror(YYLTYPE *yyloc, LFortran::Parser &p, const std::string &msg)
 
 // Precedence
 
-//%left "or"
-//%left "and"
-//%precedence "not"
-//%left "==" "/=" "<" "<=" ">" ">="
+%left "==" "!=" ">=" ">" "<=" "<"
 %left "-" "+"
 %left "%" "/" "*"
 //%precedence UMINUS
@@ -250,6 +247,13 @@ expr
     | expr "/" expr { $$ = BINOP($1, Div, $3, @$); }
     | expr "%" expr { $$ = BINOP($1, Mod, $3, @$); }
     | expr "**" expr { $$ = BINOP($1, Pow, $3, @$); }
+
+    | expr "==" expr { $$ = COMPARE($1, Eq, $3, @$); }
+    | expr "!=" expr { $$ = COMPARE($1, NotEq, $3, @$); }
+    | expr "<" expr { $$ = COMPARE($1, Lt, $3, @$); }
+    | expr "<=" expr { $$ = COMPARE($1, LtE, $3, @$); }
+    | expr ">" expr { $$ = COMPARE($1, Gt, $3, @$); }
+    | expr ">=" expr { $$ = COMPARE($1, GtE, $3, @$); }
     ;
 
 id

@@ -9,10 +9,13 @@ module ComPy
          | Assign(expr* targets, expr value)
 
     expr = BinOp(expr left, operator op, expr right)
+         | Compare(expr left, cmpop ops, expr* comparators)
          | ConstantInt(int value, string? kind)
          | Name(identifier id, expr_context ctx)
 
     expr_context = Load | Store | Del
 
     operator = Add | Sub | Mult | Div | Mod | Pow
+
+    cmpop = Eq | NotEq | Lt | LtE | Gt | GtE
 }

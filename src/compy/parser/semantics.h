@@ -71,6 +71,8 @@ static inline T** vec_cast(const Vec<ast_t*> &x) {
 
 #define BINOP(x, op, y, l) make_BinOp_t(p.m_a, l, \
         EXPR(x), operatorType::op, EXPR(y))
+#define COMPARE(x, op, y, l) make_Compare_t(p.m_a, l, \
+EXPR(x), cmpopType::op, EXPRS(A2LIST(p.m_a, y)), 1)
 #define SYMBOL(x, l) make_Name_t(p.m_a, l, x.c_str(p.m_a), expr_contextType::Load)
 // `x.int_n` is of type BigInt but we store the int64_t directly in AST
 #define INTEGER(x, l) make_ConstantInt_t(p.m_a, l, x.int_n.n, nullptr)
