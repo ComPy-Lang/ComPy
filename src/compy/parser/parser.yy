@@ -239,6 +239,10 @@ assignment_statement
 expr
     : id { $$ = $1; }
     | TK_INTEGER { $$ = INTEGER($1, @$); }
+    | TK_STRING { $$ = STRING($1, @$); }
+    | TK_FLOAT { $$ = FLOAT($1, @$); }
+    | TK_TRUE { $$ = BOOL(true, @$); }
+    | TK_FALSE { $$ = BOOL(false, @$); }
     | "(" expr ")" { $$ = $2; }
 
     | expr "+" expr { $$ = BINOP($1, Add, $3, @$); }

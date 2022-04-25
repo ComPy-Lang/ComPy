@@ -11,7 +11,12 @@ module ComPy
     expr = BinOp(expr left, operator op, expr right)
          | UnaryOp(unaryop op, expr operand)
          | Compare(expr left, cmpop ops, expr* comparators)
+
+         | ConstantStr(string value, string? kind)
          | ConstantInt(int value, string? kind)
+         | ConstantBool(bool value, string? kind)
+         | ConstantFloat(float value, string? kind)
+
          | Name(identifier id, expr_context ctx)
 
     expr_context = Load | Store | Del
