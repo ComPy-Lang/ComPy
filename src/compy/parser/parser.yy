@@ -182,6 +182,7 @@ void yyerror(YYLTYPE *yyloc, LFortran::Parser &p, const std::string &msg)
 %type <ast> target
 %type <ast> augassign_statement
 %type <operator_type> augassign_op
+%type <ast> expression_statement
 %type <ast> return_statement
 %type <vec_ast> sep
 %type <ast> sep1
@@ -214,18 +215,22 @@ units
     ;
 
 script_unit
-    : statement sep   { $$ = SCRIPT_UNIT_STMT($1); }
-    | expr sep        { $$ = SCRIPT_UNIT_EXPR($1); }
+    : statement
     ;
 
 statement
-    : single_line_statement
+    : single_line_statement sep
     ;
 
 single_line_statement
     : assignment_statement
     | augassign_statement
+    | expression_statement
     | return_statement
+    ;
+
+expression_statement
+    : expr { $$ = EXPR_01($1, @$); }
     ;
 
 target

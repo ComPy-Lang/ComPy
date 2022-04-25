@@ -54,15 +54,13 @@ static inline T** vec_cast(const Vec<ast_t*> &x) {
 
 #define EXPR(x) (down_cast<expr_t>(x))
 #define STMT(x) (down_cast<stmt_t>(x))
-#define EXPR2STMT(x) ((stmt_t*)make_Expr_t(p.m_a, x->base.loc, x))
-
 #define RESULT(x) p.result.push_back(p.m_a, STMT(x))
-#define SCRIPT_UNIT_STMT(x) (ast_t*)x
-#define SCRIPT_UNIT_EXPR(x) (ast_t*)EXPR2STMT(EXPR(x))
 
 #define LIST_NEW(l) l.reserve(p.m_a, 4)
 #define LIST_ADD(l, x) l.push_back(p.m_a, x)
 #define PLIST_ADD(l, x) l.push_back(p.m_a, *x)
+
+#define EXPR_01(e, l) make_Expr_t(p.m_a, l, EXPR(e))
 
 #define ASSIGNMENT(targets, val, l) make_Assign_t(p.m_a, l, \
         EXPRS(targets), targets.size(), EXPR(val))
