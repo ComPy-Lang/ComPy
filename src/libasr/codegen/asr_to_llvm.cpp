@@ -59,6 +59,7 @@
 #include <libasr/pass/class_constructor.h>
 #include <libasr/pass/unused_functions.h>
 #include <libasr/pass/inline_function_calls.h>
+#include <libasr/pass/dead_code_removal.h>
 #include <libasr/exception.h>
 #include <libasr/asr_utils.h>
 #include <libasr/codegen/llvm_utils.h>
@@ -438,7 +439,7 @@ public:
                     type_ptr = llvm::Type::getInt64PtrTy(context);
                     break;
                 default:
-                    throw CodeGenError("Only 32 and 64 bits integer kinds are supported.");
+                    throw CodeGenError("Only 8, 16, 32 and 64 bits integer kinds are supported.");
             }
         } else {
             switch(a_kind)
@@ -456,7 +457,7 @@ public:
                     type_ptr = llvm::Type::getInt64Ty(context);
                     break;
                 default:
-                    throw CodeGenError("Only 32 and 64 bits integer kinds are supported.");
+                    throw CodeGenError("Only 8, 16, 32 and 64 bits integer kinds are supported.");
             }
         }
         return type_ptr;
@@ -1536,7 +1537,7 @@ public:
                         target_var = ptr;
                         this->visit_expr_wrapper(v->m_symbolic_value, true);
                         llvm::Value *init_value = tmp;
-                        if (ASR::is_a<ASR::ConstantArray_t>(*v->m_symbolic_value)) {
+                        if (ASR::is_a<ASR::ArrayConstant_t>(*v->m_symbolic_value)) {
                             target_var = arr_descr->get_pointer_to_data(target_var);
                         }
                         builder->CreateStore(init_value, target_var);
@@ -1988,7 +1989,6 @@ public:
         parent_function = nullptr;
     }
 
-
     void visit_Subroutine(const ASR::Subroutine_t &x) {
         if (x.m_abi != ASR::abiType::Source &&
             x.m_abi != ASR::abiType::Interactive &&
@@ -2000,9 +2000,6 @@ public:
         generate_subroutine(x);
         parent_subroutine = nullptr;
     }
-
-
-
 
     void instantiate_subroutine(const ASR::Subroutine_t &x){
         uint32_t h = get_hash((ASR::asr_t*)&x);
@@ -2665,6 +2662,9 @@ public:
                 }
             }
         } else if (optype == ASR::ttypeType::Logical) {
+            // i1 -> i32
+            left = builder->CreateZExt(left, llvm::Type::getInt32Ty(context));
+            right = builder->CreateZExt(right, llvm::Type::getInt32Ty(context));
             switch (x.m_op) {
                 case (ASR::cmpopType::Eq) : {
                     tmp = builder->CreateICmpEQ(left, right);
@@ -2672,6 +2672,22 @@ public:
                 }
                 case (ASR::cmpopType::NotEq) : {
                     tmp = builder->CreateICmpNE(left, right);
+                    break;
+                }
+                case (ASR::cmpopType::Gt) : {
+                    tmp = builder->CreateICmpUGT(left, right);
+                    break;
+                }
+                case (ASR::cmpopType::GtE) : {
+                    tmp = builder->CreateICmpUGE(left, right);
+                    break;
+                }
+                case (ASR::cmpopType::Lt) : {
+                    tmp = builder->CreateICmpULT(left, right);
+                    break;
+                }
+                case (ASR::cmpopType::LtE) : {
+                    tmp = builder->CreateICmpULE(left, right);
                     break;
                 }
                 default : {
@@ -2976,7 +2992,7 @@ public:
             }
             tmp = lfortran_complex_bin_op(left_val, right_val, fn_name, type);
         } else {
-            throw CodeGenError("Binop: Only Real, Integer and Complex types implemented");
+            throw CodeGenError("Binop: Only Real, Integer and Complex types are allowed");
         }
     }
 
@@ -3031,7 +3047,7 @@ public:
         }
     }
 
-    void visit_ConstantInteger(const ASR::ConstantInteger_t &x) {
+    void visit_IntegerConstant(const ASR::IntegerConstant_t &x) {
         int64_t val = x.m_n;
         int a_kind = ((ASR::Integer_t*)(&(x.m_type->base)))->m_kind;
         switch( a_kind ) {
@@ -3051,7 +3067,7 @@ public:
         }
     }
 
-    void visit_ConstantReal(const ASR::ConstantReal_t &x) {
+    void visit_RealConstant(const ASR::RealConstant_t &x) {
         double val = x.m_r;
         int a_kind = ((ASR::Real_t*)(&(x.m_type->base)))->m_kind;
         switch( a_kind ) {
@@ -3072,7 +3088,7 @@ public:
 
     }
 
-    void visit_ConstantArray(const ASR::ConstantArray_t &x) {
+    void visit_ArrayConstant(const ASR::ArrayConstant_t &x) {
         llvm::Type* el_type;
         if (ASR::is_a<ASR::Integer_t>(*x.m_type)) {
             el_type = getIntType(ASR::down_cast<ASR::Integer_t>(x.m_type)->m_kind);
@@ -3098,7 +3114,7 @@ public:
             ASR::expr_t *el = x.m_args[i];
             llvm::Value *llvm_val;
             if (ASR::is_a<ASR::Integer_t>(*x.m_type)) {
-                ASR::ConstantInteger_t *ci = ASR::down_cast<ASR::ConstantInteger_t>(el);
+                ASR::IntegerConstant_t *ci = ASR::down_cast<ASR::IntegerConstant_t>(el);
                 switch (ASR::down_cast<ASR::Integer_t>(x.m_type)->m_kind) {
                     case (4) : {
                         int32_t el_value = ci->m_n;
@@ -3111,10 +3127,10 @@ public:
                         break;
                     }
                     default :
-                        throw CodeGenError("ConstArray real kind not supported yet");
+                        throw CodeGenError("ConstArray integer kind not supported yet");
                 }
             } else if (ASR::is_a<ASR::Real_t>(*x.m_type)) {
-                ASR::ConstantReal_t *cr = ASR::down_cast<ASR::ConstantReal_t>(el);
+                ASR::RealConstant_t *cr = ASR::down_cast<ASR::RealConstant_t>(el);
                 switch (ASR::down_cast<ASR::Real_t>(x.m_type)->m_kind) {
                     case (4) : {
                         float el_value = cr->m_r;
@@ -3153,8 +3169,15 @@ public:
         start_new_block(elseBB);
 
         {
-            llvm::Value *fmt_ptr = builder->CreateGlobalStringPtr("Assertion failed\n");
-            printf(context, *module, *builder, {fmt_ptr});
+            if (x.m_msg) {
+                char* s = ASR::down_cast<ASR::StringConstant_t>(x.m_msg)->m_s;
+                llvm::Value *fmt_ptr = builder->CreateGlobalStringPtr("AssertionError: %s\n");
+                llvm::Value *fmt_ptr2 = builder->CreateGlobalStringPtr(s);
+                printf(context, *module, *builder, {fmt_ptr, fmt_ptr2});
+            } else {
+                llvm::Value *fmt_ptr = builder->CreateGlobalStringPtr("AssertionError\n");
+                printf(context, *module, *builder, {fmt_ptr});
+            }
             int exit_code_int = 1;
             llvm::Value *exit_code = llvm::ConstantInt::get(context,
                     llvm::APInt(32, exit_code_int));
@@ -3172,7 +3195,7 @@ public:
         throw CodeGenError("ComplexConstructor with runtime arguments not implemented yet.");
     }
 
-    void visit_ConstantComplex(const ASR::ConstantComplex_t &x) {
+    void visit_ComplexConstant(const ASR::ComplexConstant_t &x) {
         double re = x.m_re;
         double im = x.m_im;
         int a_kind = ASRUtils::extract_kind_from_ttype_t(x.m_type);
@@ -3181,35 +3204,24 @@ public:
         switch( a_kind ) {
             case 4: {
                 re2 = llvm::ConstantFP::get(context, llvm::APFloat((float)re));
+                im2 = llvm::ConstantFP::get(context, llvm::APFloat((float)im));
                 type = complex_type_4;
                 break;
             }
             case 8: {
                 re2 = llvm::ConstantFP::get(context, llvm::APFloat(re));
+                im2 = llvm::ConstantFP::get(context, llvm::APFloat(im));
                 type = complex_type_8;
                 break;
             }
             default: {
-                throw CodeGenError("kind type not supported");
-            }
-        }
-        switch( a_kind ) {
-            case 4: {
-                im2 = llvm::ConstantFP::get(context, llvm::APFloat((float)im));
-                break;
-            }
-            case 8: {
-                im2 = llvm::ConstantFP::get(context, llvm::APFloat(im));
-                break;
-            }
-            default: {
-                throw CodeGenError("kind type not supported");
+                throw CodeGenError("kind type is not supported");
             }
         }
         tmp = complex_from_floats(re2, im2, type);
     }
 
-    void visit_ConstantLogical(const ASR::ConstantLogical_t &x) {
+    void visit_LogicalConstant(const ASR::LogicalConstant_t &x) {
         int val;
         if (x.m_value == true) {
             val = 1;
@@ -3220,7 +3232,7 @@ public:
     }
 
 
-    void visit_ConstantString(const ASR::ConstantString_t &x) {
+    void visit_StringConstant(const ASR::StringConstant_t &x) {
         tmp = builder->CreateGlobalStringPtr(x.m_s);
     }
 
@@ -3322,7 +3334,7 @@ public:
         return ASRUtils::expr_type(expr);
     }
 
-    void extract_kinds(const ASR::ImplicitCast_t& x,
+    void extract_kinds(const ASR::Cast_t& x,
                        int& arg_kind, int& dest_kind)
     {
         dest_kind = ASRUtils::extract_kind_from_ttype_t(x.m_type);
@@ -3331,7 +3343,7 @@ public:
         arg_kind = ASRUtils::extract_kind_from_ttype_t(curr_type);
     }
 
-    void visit_ImplicitCast(const ASR::ImplicitCast_t &x) {
+    void visit_Cast(const ASR::Cast_t &x) {
         if (x.m_value) {
             this->visit_expr_wrapper(x.m_value, true);
             return;
@@ -3545,7 +3557,7 @@ public:
         }
     }
 
-    void visit_Read(const ASR::Read_t &x) {
+    void visit_FileRead(const ASR::FileRead_t &x) {
         if (x.m_fmt != nullptr) {
             diag.codegen_warning_label("format string in read() is not implemented yet and it is currently treated as '*'",
                 {x.m_fmt->base.loc}, "treated as '*'");
@@ -3568,7 +3580,7 @@ public:
         handle_print(x);
     }
 
-    void visit_Write(const ASR::Write_t &x) {
+    void visit_FileWrite(const ASR::FileWrite_t &x) {
         if (x.m_fmt != nullptr) {
             diag.codegen_warning_label("format string in write() is not implemented yet and it is currently treated as '*'",
                 {x.m_fmt->base.loc}, "treated as '*'");
@@ -3593,6 +3605,14 @@ public:
             if (ASRUtils::is_integer(*t) ||
                 ASR::is_a<ASR::Logical_t>(*ASRUtils::type_get_past_pointer(t))) {
                 switch( a_kind ) {
+                    case 1 : {
+                        fmt.push_back("%d");
+                        break;
+                    }
+                    case 2 : {
+                        fmt.push_back("%d");
+                        break;
+                    }
                     case 4 : {
                         fmt.push_back("%d");
                         break;
@@ -3603,7 +3623,7 @@ public:
                     }
                     default: {
                         throw CodeGenError(R"""(Printing support is available only
-                                            for 32, and 64 bit integer kinds.)""",
+                                            for 8, 16, 32, and 64 bit integer kinds.)""",
                                             x.base.base.loc);
                     }
                 }
@@ -3666,7 +3686,8 @@ public:
                 d = builder->CreateFPExt(complex_im(tmp, complex_type), type);
                 args.push_back(d);
             } else {
-                throw LFortranException("Type not implemented");
+                throw LFortranException("Printing support is available only for integer, real,"
+                    " character, and complex types.");
             }
         }
         std::string fmt_str;
@@ -3779,8 +3800,8 @@ public:
                         uint32_t h = get_hash((ASR::asr_t*)arg);
                         if (llvm_symtab.find(h) != llvm_symtab.end()) {
                             tmp = llvm_symtab[h];
-                            const ASR::symbol_t* func_subrout = symbol_get_past_external(x.m_name);
-                            ASR::abiType x_abi = (ASR::abiType) 0;
+                            func_subrout = symbol_get_past_external(x.m_name);
+                            x_abi = (ASR::abiType) 0;
                             std::uint32_t m_h;
                             ASR::Variable_t *orig_arg = nullptr;
                             std::string orig_arg_name = "";
@@ -4101,7 +4122,7 @@ public:
             llvm::Value* fn = llvm_symtab_fn_arg[h];
             llvm::FunctionType* fntype = llvm_symtab_fn[h]->getFunctionType();
             std::string m_name = std::string(((ASR::Subroutine_t*)(&(x.m_name->base)))->m_name);
-            std::vector<llvm::Value *> args = convert_call_args(x, m_name);
+            args = convert_call_args(x, m_name);
             tmp = builder->CreateCall(fntype, fn, args);
         } else if (llvm_symtab_fn.find(h) == llvm_symtab_fn.end()) {
             throw CodeGenError("Subroutine code not generated for '"
@@ -4168,7 +4189,7 @@ public:
                 h = get_hash((ASR::asr_t*)s);
             } else {
                 if (func_name == "len") {
-                    std::vector<llvm::Value *> args = convert_call_args(x, "len");
+                    args = convert_call_args(x, "len");
                     LFORTRAN_ASSERT(args.size() == 1)
                     tmp = lfortran_str_len(args[0]);
                     return;
@@ -4187,7 +4208,7 @@ public:
             llvm::Value* fn = llvm_symtab_fn_arg[h];
             llvm::FunctionType* fntype = llvm_symtab_fn[h]->getFunctionType();
             std::string m_name = std::string(((ASR::Function_t*)(&(x.m_name->base)))->m_name);
-            std::vector<llvm::Value *> args = convert_call_args(x, m_name);
+            args = convert_call_args(x, m_name);
             tmp = builder->CreateCall(fntype, fn, args);
         } else if (llvm_symtab_fn.find(h) == llvm_symtab_fn.end()) {
             throw CodeGenError("Function code not generated for '"
@@ -4286,6 +4307,11 @@ Result<std::unique_ptr<LLVMModule>> asr_to_llvm(ASR::TranslationUnit_t &asr,
 
     pass_replace_do_loops(al, asr);
     pass_replace_forall(al, asr);
+
+    if( fast ) {
+        pass_dead_code_removal(al, asr, rl_path);
+    }
+
     pass_replace_select_case(al, asr);
     pass_unused_functions(al, asr);
 
@@ -4317,8 +4343,7 @@ Result<std::unique_ptr<LLVMModule>> asr_to_llvm(ASR::TranslationUnit_t &asr,
         llvm::raw_string_ostream os(buf);
         v.module->print(os, nullptr);
         std::cout << os.str();
-        std::string msg = "asr_to_llvm: module failed verification. Error:\n"
-            + err.str();
+        msg = "asr_to_llvm: module failed verification. Error:\n" + err.str();
         diagnostics.diagnostics.push_back(diag::Diagnostic(msg,
             diag::Level::Error, diag::Stage::CodeGen));
         Error error;
