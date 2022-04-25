@@ -1,7 +1,7 @@
 %require "3.0"
 %define api.pure
 %define api.value.type {LFortran::YYSTYPE}
-//%param {LFortran::Parser &p}
+%param {LFortran::Parser &p}
 %locations
 %expect    0   // shift/reduce conflicts
 
@@ -21,17 +21,17 @@
 
 %code requires // *.h
 {
-//#include <lpython/parser/parser.h>
+#include <compy/parser/parser.h>
 }
 
 %code // *.cpp
 {
 
-#include <lpython/parser/parser.h>
-#include <lpython/parser/tokenizer.h>
-#include <lpython/parser/semantics.h>
+#include <compy/parser/parser.h>
+#include <compy/parser/tokenizer.h>
+#include <compy/parser/semantics.h>
 
-/*
+
 int yylex(LFortran::YYSTYPE *yylval, YYLTYPE *yyloc, LFortran::Parser &p)
 {
     return p.m_tokenizer.lex(p.m_a, *yylval, *yyloc, p.diag);
@@ -40,7 +40,7 @@ void yyerror(YYLTYPE *yyloc, LFortran::Parser &p, const std::string &msg)
 {
     p.handle_yyerror(*yyloc, msg);
 }
-*/
+
 
 #define YYLLOC_DEFAULT(Current, Rhs, N)                                 \
     do                                                                  \
@@ -185,7 +185,7 @@ void yyerror(YYLTYPE *yyloc, LFortran::Parser &p, const std::string &msg)
 //%precedence UMINUS
 %right "**"
 
-%start expr
+%start units
 
 %%
 
@@ -197,6 +197,10 @@ void yyerror(YYLTYPE *yyloc, LFortran::Parser &p, const std::string &msg)
 // Top level rules to be used for parsing.
 
 // Higher %dprec means higher precedence
+
+units
+    : expr TK_NEWLINE { RESULT($1); }
+    ;
 
 expr
 // ### primary
