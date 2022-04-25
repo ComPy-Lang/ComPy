@@ -6,7 +6,7 @@
 
 namespace LFortran::ComPy {
 
-    std::string pickle_ast(AST::ast_t &ast, bool colors=false);
+    std::string pickle_ast(AST::ast_t &ast, bool colors=false, bool indent=false);
 
 } // namespace LFortran
 

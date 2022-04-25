@@ -14,9 +14,10 @@ public:
     }
 };
 
-std::string pickle_ast(AST::ast_t &ast, bool colors) {
+std::string pickle_ast(AST::ast_t &ast, bool colors, bool indent) {
     PickleVisitor v;
     v.use_colors = colors;
+    v.indent = indent;
     v.visit_ast(ast);
     return v.get_str();
 }

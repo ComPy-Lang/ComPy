@@ -69,7 +69,7 @@ int emit_ast(const std::string &infile,
     LFortran::ComPy::AST::ast_t* ast = r.result;
 
     std::cout << LFortran::ComPy::pickle_ast(*ast,
-        compiler_options.use_colors) << std::endl;
+        compiler_options.use_colors, compiler_options.indent) << std::endl;
     return 0;
 }
 
@@ -97,6 +97,7 @@ int main(int argc, char *argv[])
         // ComPy specific options
         app.add_flag("--show-tokens", show_tokens, "Show tokens for the given file and exit");
         app.add_flag("--show-ast", show_ast, "Show AST for the given file and exit");
+        app.add_flag("--indent", compiler_options.indent, "Indented print ASR/AST");
 
         app.get_formatter()->column_width(25);
         CLI11_PARSE(app, argc, argv);
