@@ -9,6 +9,7 @@ module ComPy
          | Return(expr? value)
          | Assign(expr* targets, expr value)
          | AugAssign(expr target, operator op, expr value)
+         | For(expr target, expr iter, stmt* body, stmt* orelse)
          | If(expr test, stmt* body, stmt* orelse)
 
     expr = BinOp(expr left, operator op, expr right)

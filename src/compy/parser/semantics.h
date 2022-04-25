@@ -80,6 +80,12 @@ static inline T** vec_cast(const Vec<ast_t*> &x) {
 #define IF_STMT_03(e, stmt, orelse, l) make_If_t(p.m_a, l, \
         EXPR(e), STMTS(stmt), stmt.size(), STMTS(A2LIST(p.m_a, orelse)), 1)
 
+#define FOR_01(target, iter, stmts, l) make_For_t(p.m_a, l, \
+        EXPR(target), EXPR(iter), STMTS(stmts), stmts.size(), nullptr, 0)
+#define FOR_02(target, iter, stmts, orelse, l) make_For_t(p.m_a, l, \
+        EXPR(target), EXPR(iter), STMTS(stmts), stmts.size(), \
+        STMTS(orelse), orelse.size())
+
 #define BINOP(x, op, y, l) make_BinOp_t(p.m_a, l, \
         EXPR(x), operatorType::op, EXPR(y))
 #define UNARY(x, op, l) make_UnaryOp_t(p.m_a, l, unaryopType::op, EXPR(x))
