@@ -104,11 +104,11 @@ public:
         asr = const_cast<ASR::expr_t*>(&(x.base));
     }
 
-    void visit_ImplicitCast(const ASR::ImplicitCast_t& x) {
+    void visit_Cast(const ASR::Cast_t& x) {
         /*
         asr = nullptr;
         this->visit_expr(*x.m_arg);
-        ASR::ImplicitCast_t& x_unconst = const_cast<ASR::ImplicitCast_t&>(x);
+        ASR::Cast_t& x_unconst = const_cast<ASR::Cast_t&>(x);
         if( asr != nullptr ) {
             x_unconst.m_arg = asr;
         }
@@ -124,11 +124,11 @@ public:
                     asr = init_var->m_symbolic_value;
                 } else {
                     switch( init_var->m_symbolic_value->type ) {
-                        case ASR::exprType::ConstantInteger:
-                        case ASR::exprType::ConstantReal:
-                        case ASR::exprType::ConstantComplex:
-                        case ASR::exprType::ConstantLogical:
-                        case ASR::exprType::ConstantString: {
+                        case ASR::exprType::IntegerConstant:
+                        case ASR::exprType::RealConstant:
+                        case ASR::exprType::ComplexConstant:
+                        case ASR::exprType::LogicalConstant:
+                        case ASR::exprType::StringConstant: {
                             asr = init_var->m_symbolic_value;
                             break;
                         }

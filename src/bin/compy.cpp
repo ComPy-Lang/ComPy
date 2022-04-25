@@ -3,34 +3,23 @@
 #define CLI11_HAS_FILESYSTEM 0
 #include <bin/CLI11.hpp>
 
+#include <libasr/stacktrace.h>
 #include <compy/utils.h>
+#include <compy/semantics/ast_to_asr.h>
 #include <compy/parser/tokenizer.h>
-
+#include <compy/parser/parser.h>
+#include <libasr/config.h>
+#include <libasr/string_utils.h>
 
 namespace {
 
 using LFortran::CompilerOptions;
-
-std::string read_file(const std::string &filename)
-{
-    std::ifstream ifs(filename.c_str(), std::ios::in | std::ios::binary
-            | std::ios::ate);
-
-    std::ifstream::pos_type filesize = ifs.tellg();
-    if (filesize < 0) return std::string();
-
-    ifs.seekg(0, std::ios::beg);
-
-    std::vector<char> bytes(filesize);
-    ifs.read(&bytes[0], filesize);
-
-    return std::string(&bytes[0], filesize);
-}
+using LFortran::parse_file;
 
 int emit_tokens(const std::string &infile, bool line_numbers,
                 const CompilerOptions &compiler_options)
 {
-    std::string input = read_file(infile);
+    std::string input = LFortran::read_file(infile);
     // Src -> Tokens
     Allocator al(64*1024*1024);
     std::vector<int> toks;
@@ -59,6 +48,30 @@ int emit_tokens(const std::string &infile, bool line_numbers,
     return 0;
 }
 
+int emit_ast(const std::string &infile,
+    CompilerOptions &compiler_options)
+{
+    Allocator al(4*1024);
+    LFortran::diag::Diagnostics diagnostics;
+    LFortran::Result<LFortran::ComPy::AST::ast_t*> r = parse_file(
+        al, infile, diagnostics);
+    if (diagnostics.diagnostics.size() > 0) {
+        LFortran::LocationManager lm;
+        lm.in_filename = infile;
+        std::string input = LFortran::read_file(infile);
+        lm.init_simple(input);
+        std::cerr << diagnostics.render(input, lm, compiler_options);
+    }
+    if (!r.ok) {
+        LFORTRAN_ASSERT(diagnostics.has_error())
+        return 1;
+    }
+    LFortran::ComPy::AST::ast_t* ast = r.result;
+
+    std::cout << LFortran::ComPy::pickle_ast(*ast,
+        compiler_options.use_colors) << std::endl;
+    return 0;
+}
 
 } // anonymous namespace
 
@@ -67,10 +80,10 @@ int main(int argc, char *argv[])
     LFortran::initialize();
 
     try {
-
         std::vector<std::string> arg_files;
         bool arg_version = false;
         bool show_tokens = false;
+        bool show_ast = false;
 
         CompilerOptions compiler_options;
 
@@ -82,7 +95,8 @@ int main(int argc, char *argv[])
         app.add_flag("--version", arg_version, "Display compiler version information");
 
         // ComPy specific options
-        app.add_flag("--show-tokens", show_tokens, "Show tokens for the given python file and exit");
+        app.add_flag("--show-tokens", show_tokens, "Show tokens for the given file and exit");
+        app.add_flag("--show-ast", show_ast, "Show AST for the given file and exit");
 
         app.get_formatter()->column_width(25);
         CLI11_PARSE(app, argc, argv);
@@ -107,6 +121,9 @@ int main(int argc, char *argv[])
 
         if (show_tokens) {
             return emit_tokens(arg_file, true, compiler_options);
+        }
+        if (show_ast) {
+            return emit_ast(arg_file, compiler_options);
         }
 
     } catch(const LFortran::LFortranException &e) {

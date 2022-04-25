@@ -3,6 +3,7 @@
 
 #include <functional>
 #include <map>
+#include <limits>
 
 #include <libasr/assert.h>
 #include <libasr/asr.h>
@@ -102,22 +103,23 @@ static inline ASR::ttype_t* expr_type(const ASR::expr_t *f)
         case ASR::exprType::IfExp: { return ((ASR::IfExp_t*)f)->m_type; }
         case ASR::exprType::FunctionCall: { return ((ASR::FunctionCall_t*)f)->m_type; }
         case ASR::exprType::DerivedTypeConstructor: { return ((ASR::DerivedTypeConstructor_t*)f)->m_type; }
-        case ASR::exprType::ConstantArray: { return ((ASR::ConstantArray_t*)f)->m_type; }
+        case ASR::exprType::ArrayConstant: { return ((ASR::ArrayConstant_t*)f)->m_type; }
         case ASR::exprType::ImpliedDoLoop: { return ((ASR::ImpliedDoLoop_t*)f)->m_type; }
-        case ASR::exprType::ConstantInteger: { return ((ASR::ConstantInteger_t*)f)->m_type; }
-        case ASR::exprType::ConstantReal: { return ((ASR::ConstantReal_t*)f)->m_type; }
-        case ASR::exprType::ConstantComplex: { return ((ASR::ConstantComplex_t*)f)->m_type; }
-        case ASR::exprType::ConstantSet: { return ((ASR::ConstantSet_t*)f)->m_type; }
-        case ASR::exprType::ConstantTuple: { return ((ASR::ConstantTuple_t*)f)->m_type; }
-        case ASR::exprType::ConstantLogical: { return ((ASR::ConstantLogical_t*)f)->m_type; }
-        case ASR::exprType::ConstantString: { return ((ASR::ConstantString_t*)f)->m_type; }
-        case ASR::exprType::ConstantDictionary: { return ((ASR::ConstantDictionary_t*)f)->m_type; }
-        case ASR::exprType::BOZ: { return ((ASR::BOZ_t*)f)->m_type; }
+        case ASR::exprType::IntegerConstant: { return ((ASR::IntegerConstant_t*)f)->m_type; }
+        case ASR::exprType::RealConstant: { return ((ASR::RealConstant_t*)f)->m_type; }
+        case ASR::exprType::ComplexConstant: { return ((ASR::ComplexConstant_t*)f)->m_type; }
+        case ASR::exprType::SetConstant: { return ((ASR::SetConstant_t*)f)->m_type; }
+        case ASR::exprType::ListConstant: { return ((ASR::ListConstant_t*)f)->m_type; }
+        case ASR::exprType::ListConcat: { return ((ASR::ListConcat_t*)f)->m_type; }
+        case ASR::exprType::TupleConstant: { return ((ASR::TupleConstant_t*)f)->m_type; }
+        case ASR::exprType::LogicalConstant: { return ((ASR::LogicalConstant_t*)f)->m_type; }
+        case ASR::exprType::StringConstant: { return ((ASR::StringConstant_t*)f)->m_type; }
+        case ASR::exprType::DictConstant: { return ((ASR::DictConstant_t*)f)->m_type; }
+        case ASR::exprType::IntegerBOZ: { return ((ASR::IntegerBOZ_t*)f)->m_type; }
         case ASR::exprType::Var: { return EXPR2VAR(f)->m_type; }
         case ASR::exprType::ArrayRef: { return ((ASR::ArrayRef_t*)f)->m_type; }
         case ASR::exprType::DerivedRef: { return ((ASR::DerivedRef_t*)f)->m_type; }
-        case ASR::exprType::ImplicitCast: { return ((ASR::ImplicitCast_t*)f)->m_type; }
-        case ASR::exprType::ExplicitCast: { return ((ASR::ExplicitCast_t*)f)->m_type; }
+        case ASR::exprType::Cast: { return ((ASR::Cast_t*)f)->m_type; }
         default : throw LFortranException("Not implemented");
     }
 }
@@ -148,6 +150,43 @@ static inline std::string type_to_str(const ASR::ttype_t *t)
         }
         case ASR::ttypeType::Dict: {
             return "dict";
+        }
+        case ASR::ttypeType::List: {
+            return "list";
+        }
+        default : throw LFortranException("Not implemented");
+    }
+}
+
+static inline std::string type_to_str_python(const ASR::ttype_t *t)
+{
+    switch (t->type) {
+        case ASR::ttypeType::Integer: {
+            return "int";
+        }
+        case ASR::ttypeType::Real: {
+            return "float";
+        }
+        case ASR::ttypeType::Complex: {
+            return "complex";
+        }
+        case ASR::ttypeType::Logical: {
+            return "bool";
+        }
+        case ASR::ttypeType::Character: {
+            return "str";
+        }
+        case ASR::ttypeType::Tuple: {
+            return "tuple";
+        }
+        case ASR::ttypeType::Set: {
+            return "set";
+        }
+        case ASR::ttypeType::Dict: {
+            return "dict";
+        }
+        case ASR::ttypeType::List: {
+            return "list";
         }
         default : throw LFortranException("Not implemented");
     }
@@ -206,20 +245,19 @@ static inline ASR::expr_t* expr_value(ASR::expr_t *f)
         case ASR::exprType::FunctionCall: { return ASR::down_cast<ASR::FunctionCall_t>(f)->m_value; }
         case ASR::exprType::ArrayRef: { return ASR::down_cast<ASR::ArrayRef_t>(f)->m_value; }
         case ASR::exprType::DerivedRef: { return ASR::down_cast<ASR::DerivedRef_t>(f)->m_value; }
-        case ASR::exprType::ImplicitCast: { return ASR::down_cast<ASR::ImplicitCast_t>(f)->m_value; }
-        case ASR::exprType::ExplicitCast: { return ASR::down_cast<ASR::ExplicitCast_t>(f)->m_value; }
+        case ASR::exprType::Cast: { return ASR::down_cast<ASR::Cast_t>(f)->m_value; }
         case ASR::exprType::Var: { return EXPR2VAR(f)->m_value; }
         case ASR::exprType::StrOp: { return ASR::down_cast<ASR::StrOp_t>(f)->m_value; }
         case ASR::exprType::ImpliedDoLoop: { return ASR::down_cast<ASR::ImpliedDoLoop_t>(f)->m_value; }
-        case ASR::exprType::ConstantArray: // Drop through
-        case ASR::exprType::ConstantInteger: // Drop through
-        case ASR::exprType::ConstantReal: // Drop through
-        case ASR::exprType::ConstantComplex: // Drop through
-        case ASR::exprType::ConstantLogical: // Drop through
-        case ASR::exprType::ConstantTuple: // Drop through
-        case ASR::exprType::ConstantDictionary: // Drop through
-        case ASR::exprType::ConstantSet: // Drop through
-        case ASR::exprType::ConstantString:{ // For all Constants
+        case ASR::exprType::ArrayConstant: // Drop through
+        case ASR::exprType::IntegerConstant: // Drop through
+        case ASR::exprType::RealConstant: // Drop through
+        case ASR::exprType::ComplexConstant: // Drop through
+        case ASR::exprType::LogicalConstant: // Drop through
+        case ASR::exprType::TupleConstant: // Drop through
+        case ASR::exprType::DictConstant: // Drop through
+        case ASR::exprType::SetConstant: // Drop through
+        case ASR::exprType::StringConstant:{ // For all Constants
             return f;
         }
         default : throw LFortranException("Not implemented");
@@ -421,15 +459,15 @@ static inline bool is_value_constant(ASR::expr_t *a_value) {
     if( a_value == nullptr ) {
         return false;
     }
-    if (ASR::is_a<ASR::ConstantInteger_t>(*a_value)) {
+    if (ASR::is_a<ASR::IntegerConstant_t>(*a_value)) {
         // OK
-    } else if (ASR::is_a<ASR::ConstantReal_t>(*a_value)) {
+    } else if (ASR::is_a<ASR::RealConstant_t>(*a_value)) {
         // OK
-    } else if (ASR::is_a<ASR::ConstantComplex_t>(*a_value)) {
+    } else if (ASR::is_a<ASR::ComplexConstant_t>(*a_value)) {
         // OK
-    } else if (ASR::is_a<ASR::ConstantLogical_t>(*a_value)) {
+    } else if (ASR::is_a<ASR::LogicalConstant_t>(*a_value)) {
         // OK
-    } else if (ASR::is_a<ASR::ConstantString_t>(*a_value)) {
+    } else if (ASR::is_a<ASR::StringConstant_t>(*a_value)) {
         // OK
     } else {
         return false;
@@ -437,24 +475,108 @@ static inline bool is_value_constant(ASR::expr_t *a_value) {
     return true;
 }
 
-template <typename T>
-static inline bool is_value_constant(ASR::expr_t *a_value, T& const_value) {
+static inline bool is_value_constant(ASR::expr_t *a_value, int64_t& const_value) {
     if( a_value == nullptr ) {
         return false;
     }
-    if (ASR::is_a<ASR::ConstantInteger_t>(*a_value)) {
-        ASR::ConstantInteger_t* const_int = ASR::down_cast<ASR::ConstantInteger_t>(a_value);
+    if (ASR::is_a<ASR::IntegerConstant_t>(*a_value)) {
+        ASR::IntegerConstant_t* const_int = ASR::down_cast<ASR::IntegerConstant_t>(a_value);
         const_value = const_int->m_n;
-    } else if (ASR::is_a<ASR::ConstantReal_t>(*a_value)) {
-        ASR::ConstantReal_t* const_real = ASR::down_cast<ASR::ConstantReal_t>(a_value);
-        const_value = const_real->m_r;
-    } else if (ASR::is_a<ASR::ConstantLogical_t>(*a_value)) {
-        ASR::ConstantLogical_t* const_logical = ASR::down_cast<ASR::ConstantLogical_t>(a_value);
+    } else {
+        return false;
+    }
+    return true;
+}
+
+static inline bool is_value_constant(ASR::expr_t *a_value, bool& const_value) {
+    if( a_value == nullptr ) {
+        return false;
+    }
+    if (ASR::is_a<ASR::LogicalConstant_t>(*a_value)) {
+        ASR::LogicalConstant_t* const_logical = ASR::down_cast<ASR::LogicalConstant_t>(a_value);
         const_value = const_logical->m_value;
     } else {
         return false;
     }
     return true;
+}
+
+static inline bool is_value_constant(ASR::expr_t *a_value, double& const_value) {
+    if( a_value == nullptr ) {
+        return false;
+    }
+    if (ASR::is_a<ASR::IntegerConstant_t>(*a_value)) {
+        ASR::IntegerConstant_t* const_int = ASR::down_cast<ASR::IntegerConstant_t>(a_value);
+        const_value = const_int->m_n;
+    } else if (ASR::is_a<ASR::RealConstant_t>(*a_value)) {
+        ASR::RealConstant_t* const_real = ASR::down_cast<ASR::RealConstant_t>(a_value);
+        const_value = const_real->m_r;
+    } else {
+        return false;
+    }
+    return true;
+}
+
+static inline bool is_value_constant(ASR::expr_t *a_value, std::string& const_value) {
+    if( a_value == nullptr ) {
+        return false;
+    }
+    if (ASR::is_a<ASR::StringConstant_t>(*a_value)) {
+        ASR::StringConstant_t* const_string = ASR::down_cast<ASR::StringConstant_t>(a_value);
+        const_value = std::string(const_string->m_s);
+    } else {
+        return false;
+    }
+    return true;
+}
+
+static inline bool is_value_equal(ASR::expr_t* test_expr, ASR::expr_t* desired_expr) {
+    ASR::expr_t* test_value = expr_value(test_expr);
+    ASR::expr_t* desired_value = expr_value(desired_expr);
+    if( !is_value_constant(test_value) ||
+        !is_value_constant(desired_value) ||
+        test_value->type != desired_value->type ) {
+        return false;
+    }
+
+    switch( desired_value->type ) {
+        case ASR::exprType::IntegerConstant: {
+            ASR::IntegerConstant_t* test_int = ASR::down_cast<ASR::IntegerConstant_t>(test_value);
+            ASR::IntegerConstant_t* desired_int = ASR::down_cast<ASR::IntegerConstant_t>(desired_value);
+            return test_int->m_n == desired_int->m_n;
+        }
+        case ASR::exprType::StringConstant: {
+            ASR::StringConstant_t* test_str = ASR::down_cast<ASR::StringConstant_t>(test_value);
+            ASR::StringConstant_t* desired_str = ASR::down_cast<ASR::StringConstant_t>(desired_value);
+            return std::string(test_str->m_s) == std::string(desired_str->m_s);
+        }
+        default: {
+            return false;
+        }
+    }
+}
+
+static inline bool is_value_in_range(ASR::expr_t* start, ASR::expr_t* end, ASR::expr_t* value) {
+    ASR::expr_t *start_value = nullptr, *end_value = nullptr;
+    if( start ) {
+        start_value = expr_value(start);
+    }
+    if( end ) {
+        end_value = expr_value(end);
+    }
+    ASR::expr_t* test_value = expr_value(value);
+
+
+    double start_double = std::numeric_limits<double>::min();
+    double end_double = std::numeric_limits<double>::max();
+    double value_double;
+    bool start_const = is_value_constant(start_value, start_double);
+    bool end_const = is_value_constant(end_value, end_double);
+    bool value_const = is_value_constant(test_value, value_double);
+    if( !value_const || (!start_const && !end_const) ) {
+        return false;
+    }
+    return value_double >= start_double && value_double <= end_double;
 }
 
 // Returns true if all arguments are evaluated
@@ -506,8 +628,8 @@ static inline bool extract_value(ASR::expr_t* value_expr, T& value) {
     }
 
     switch( value_expr->type ) {
-        case ASR::exprType::ConstantReal: {
-            ASR::ConstantReal_t* const_real = ASR::down_cast<ASR::ConstantReal_t>(value_expr);
+        case ASR::exprType::RealConstant: {
+            ASR::RealConstant_t* const_real = ASR::down_cast<ASR::RealConstant_t>(value_expr);
             value = (T) const_real->m_r;
             break;
         }
@@ -776,8 +898,8 @@ inline bool is_same_type_pointer(ASR::ttype_t* source, ASR::ttype_t* dest) {
             inline int extract_kind(ASR::expr_t* kind_expr, const Location& loc) {
                 int a_kind = 4;
                 switch( kind_expr->type ) {
-                    case ASR::exprType::ConstantInteger: {
-                        a_kind = ASR::down_cast<ASR::ConstantInteger_t>
+                    case ASR::exprType::IntegerConstant: {
+                        a_kind = ASR::down_cast<ASR::IntegerConstant_t>
                                 (kind_expr)->m_n;
                         break;
                     }
@@ -790,7 +912,7 @@ inline bool is_same_type_pointer(ASR::ttype_t* source, ASR::ttype_t* dest) {
                         if( kind_variable->m_storage == ASR::storage_typeType::Parameter ) {
                             if( kind_variable->m_type->type == ASR::ttypeType::Integer ) {
                                 LFORTRAN_ASSERT( kind_variable->m_value != nullptr );
-                                a_kind = ASR::down_cast<ASR::ConstantInteger_t>(kind_variable->m_value)->m_n;
+                                a_kind = ASR::down_cast<ASR::IntegerConstant_t>(kind_variable->m_value)->m_n;
                             } else {
                                 std::string msg = "Integer variable required. " + std::string(kind_variable->m_name) +
                                                 " is not an Integer variable.";
@@ -815,8 +937,8 @@ inline bool is_same_type_pointer(ASR::ttype_t* source, ASR::ttype_t* dest) {
             inline int extract_len(ASR::expr_t* len_expr, const Location& loc) {
                 int a_len = -10;
                 switch( len_expr->type ) {
-                    case ASR::exprType::ConstantInteger: {
-                        a_len = ASR::down_cast<ASR::ConstantInteger_t>
+                    case ASR::exprType::IntegerConstant: {
+                        a_len = ASR::down_cast<ASR::IntegerConstant_t>
                                 (len_expr)->m_n;
                         break;
                     }
@@ -829,7 +951,7 @@ inline bool is_same_type_pointer(ASR::ttype_t* source, ASR::ttype_t* dest) {
                         if( len_variable->m_storage == ASR::storage_typeType::Parameter ) {
                             if( len_variable->m_type->type == ASR::ttypeType::Integer ) {
                                 LFORTRAN_ASSERT( len_variable->m_value != nullptr );
-                                a_len = ASR::down_cast<ASR::ConstantInteger_t>(len_variable->m_value)->m_n;
+                                a_len = ASR::down_cast<ASR::IntegerConstant_t>(len_variable->m_value)->m_n;
                             } else {
                                 std::string msg = "Integer variable required. " + std::string(len_variable->m_name) +
                                                 " is not an Integer variable.";
