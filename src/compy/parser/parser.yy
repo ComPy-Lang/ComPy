@@ -176,7 +176,10 @@ void yyerror(YYLTYPE *yyloc, LFortran::Parser &p, const std::string &msg)
 %type <ast> expr
 %type <ast> script_unit
 %type <ast> statement
+%type <vec_ast> statements
+%type <vec_ast> statements1
 %type <ast> single_line_statement
+%type <ast> multi_line_statement
 %type <ast> assignment_statement
 %type <vec_ast> target_list
 %type <ast> target
@@ -184,6 +187,8 @@ void yyerror(YYLTYPE *yyloc, LFortran::Parser &p, const std::string &msg)
 %type <operator_type> augassign_op
 %type <ast> expression_statement
 %type <ast> return_statement
+%type <ast> if_statement
+%type <ast> elif_statement
 %type <vec_ast> sep
 %type <ast> sep1
 
@@ -218,8 +223,18 @@ script_unit
     : statement
     ;
 
+statements
+    : TK_INDENT statements1 TK_DEDENT { $$ = $2; }
+    ;
+
+statements1
+    : statements1 statement { $$ = $1; LIST_ADD($$, $2); }
+    | statement { LIST_NEW($$); LIST_ADD($$, $1); }
+    ;
+
 statement
     : single_line_statement sep
+    | multi_line_statement
     ;
 
 single_line_statement
@@ -227,6 +242,10 @@ single_line_statement
     | augassign_statement
     | expression_statement
     | return_statement
+    ;
+
+multi_line_statement
+    : if_statement
     ;
 
 expression_statement
@@ -262,6 +281,23 @@ augassign_op
 return_statement
     : KW_RETURN { $$ = RETURN_01(@$); }
     | KW_RETURN expr { $$ = RETURN_02($2, @$); }
+    ;
+
+
+elif_statement
+    : KW_ELIF expr ":" sep statements { $$ = IF_STMT_01($2, $5, @$); }
+    | KW_ELIF expr ":" sep statements KW_ELSE ":" sep statements {
+        $$ = IF_STMT_02($2, $5, $9, @$); }
+    | KW_ELIF expr ":" sep statements elif_statement {
+        $$ = IF_STMT_03($2, $5, $6, @$); }
+    ;
+
+if_statement
+    : KW_IF expr ":" sep statements { $$ = IF_STMT_01($2, $5, @$); }
+    | KW_IF expr ":" sep statements KW_ELSE ":" sep statements {
+        $$ = IF_STMT_02($2, $5, $9, @$); }
+    | KW_IF expr ":" sep statements elif_statement {
+        $$ = IF_STMT_03($2, $5, $6, @$); }
     ;
 
 expr
