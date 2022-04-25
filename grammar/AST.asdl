@@ -7,6 +7,7 @@ module ComPy
 
     stmt = Expr(expr value)
          | Assign(expr* targets, expr value)
+         | AugAssign(expr target, operator op, expr value)
 
     expr = BinOp(expr left, operator op, expr right)
          | UnaryOp(unaryop op, expr operand)

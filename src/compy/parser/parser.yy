@@ -180,6 +180,8 @@ void yyerror(YYLTYPE *yyloc, LFortran::Parser &p, const std::string &msg)
 %type <ast> assignment_statement
 %type <vec_ast> target_list
 %type <ast> target
+%type <ast> augassign_statement
+%type <operator_type> augassign_op
 %type <vec_ast> sep
 %type <ast> sep1
 
@@ -221,6 +223,7 @@ statement
 
 single_line_statement
     : assignment_statement
+    | augassign_statement
     ;
 
 target
@@ -234,6 +237,19 @@ target_list
 
 assignment_statement
     : target_list expr { $$ = ASSIGNMENT($1, $2, @$); }
+    ;
+
+augassign_statement
+    : target augassign_op expr { $$ = AUGASSIGN_01($1, $2, $3, @$); }
+    ;
+
+augassign_op
+    : "+=" { $$ = OPERATOR(Add, @$); }
+    | "-=" { $$ = OPERATOR(Sub, @$); }
+    | "*=" { $$ = OPERATOR(Mult, @$); }
+    | "/=" { $$ = OPERATOR(Div, @$); }
+    | "%=" { $$ = OPERATOR(Mod, @$); }
+    | "**=" { $$ = OPERATOR(Pow, @$); }
     ;
 
 expr
