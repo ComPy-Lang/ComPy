@@ -188,7 +188,7 @@ void yyerror(YYLTYPE *yyloc, LFortran::Parser &p, const std::string &msg)
 %left "==" "!=" ">=" ">" "<=" "<"
 %left "-" "+"
 %left "%" "/" "*"
-//%precedence UMINUS
+%precedence UNARY
 %right "**"
 
 %start units
@@ -247,6 +247,9 @@ expr
     | expr "/" expr { $$ = BINOP($1, Div, $3, @$); }
     | expr "%" expr { $$ = BINOP($1, Mod, $3, @$); }
     | expr "**" expr { $$ = BINOP($1, Pow, $3, @$); }
+
+    | "-" expr %prec UNARY { $$ = UNARY($2, USub, @$); }
+    | "+" expr %prec UNARY { $$ = UNARY($2, UAdd, @$); }
 
     | expr "==" expr { $$ = COMPARE($1, Eq, $3, @$); }
     | expr "!=" expr { $$ = COMPARE($1, NotEq, $3, @$); }

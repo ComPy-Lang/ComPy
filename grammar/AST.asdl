@@ -9,6 +9,7 @@ module ComPy
          | Assign(expr* targets, expr value)
 
     expr = BinOp(expr left, operator op, expr right)
+         | UnaryOp(unaryop op, expr operand)
          | Compare(expr left, cmpop ops, expr* comparators)
          | ConstantInt(int value, string? kind)
          | Name(identifier id, expr_context ctx)
@@ -16,6 +17,8 @@ module ComPy
     expr_context = Load | Store | Del
 
     operator = Add | Sub | Mult | Div | Mod | Pow
+
+    unaryop = UAdd | USub
 
     cmpop = Eq | NotEq | Lt | LtE | Gt | GtE
 }
