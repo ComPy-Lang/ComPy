@@ -72,6 +72,9 @@ static inline T** vec_cast(const Vec<ast_t*> &x) {
 #define OPERATOR(op, l) operatorType::op
 #define AUGASSIGN_01(x, op, y, l) make_AugAssign_t(p.m_a, l, EXPR(x), op, EXPR(y))
 
+#define RETURN_01(l) make_Return_t(p.m_a, l, nullptr)
+#define RETURN_02(e, l) make_Return_t(p.m_a, l, EXPR(e))
+
 #define BINOP(x, op, y, l) make_BinOp_t(p.m_a, l, \
         EXPR(x), operatorType::op, EXPR(y))
 #define UNARY(x, op, l) make_UnaryOp_t(p.m_a, l, unaryopType::op, EXPR(x))

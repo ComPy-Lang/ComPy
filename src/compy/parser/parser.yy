@@ -182,6 +182,7 @@ void yyerror(YYLTYPE *yyloc, LFortran::Parser &p, const std::string &msg)
 %type <ast> target
 %type <ast> augassign_statement
 %type <operator_type> augassign_op
+%type <ast> return_statement
 %type <vec_ast> sep
 %type <ast> sep1
 
@@ -224,6 +225,7 @@ statement
 single_line_statement
     : assignment_statement
     | augassign_statement
+    | return_statement
     ;
 
 target
@@ -250,6 +252,11 @@ augassign_op
     | "/=" { $$ = OPERATOR(Div, @$); }
     | "%=" { $$ = OPERATOR(Mod, @$); }
     | "**=" { $$ = OPERATOR(Pow, @$); }
+    ;
+
+return_statement
+    : KW_RETURN { $$ = RETURN_01(@$); }
+    | KW_RETURN expr { $$ = RETURN_02($2, @$); }
     ;
 
 expr

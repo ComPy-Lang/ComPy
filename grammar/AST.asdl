@@ -6,6 +6,7 @@ module ComPy
     mod = Module(stmt* body)
 
     stmt = Expr(expr value)
+         | Return(expr? value)
          | Assign(expr* targets, expr value)
          | AugAssign(expr target, operator op, expr value)
 
