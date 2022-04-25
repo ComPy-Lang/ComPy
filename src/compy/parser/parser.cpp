@@ -5,6 +5,8 @@
 #include <compy/parser/parser.h>
 #include <compy/parser/parser.tab.hh>
 #include <libasr/diagnostics.h>
+#include <libasr/string_utils.h>
+#include <libasr/utils.h>
 #include <compy/parser/parser_exception.h>
 
 namespace LFortran {
@@ -81,5 +83,19 @@ void Parser::handle_yyerror(const Location &loc, const std::string &msg)
     throw parser_local::ParserError(message, loc);
 }
 
+Result<ComPy::AST::ast_t*> parse_file(Allocator &al,
+        const std::string &infile,
+        diag::Diagnostics &diagnostics) {
+    ComPy::AST::ast_t* ast;
+    std::string input = read_file(infile);
+    Result<ComPy::AST::Module_t*> res = parse(al, input, diagnostics);
+    if (res.ok) {
+        ast = (ComPy::AST::ast_t*)res.result;
+    } else {
+        LFORTRAN_ASSERT(diagnostics.has_error())
+        return Error();
+    }
+    return ast;
+}
 
 } // LFortran

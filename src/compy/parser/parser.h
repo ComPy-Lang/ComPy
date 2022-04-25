@@ -34,6 +34,9 @@ Result<ComPy::AST::Module_t*> parse(Allocator &al,
     const std::string &s,
     diag::Diagnostics &diagnostics);
 
+Result<ComPy::AST::ast_t*> parse_file(Allocator &al,
+        const std::string &infile,
+        diag::Diagnostics &diagnostics);
 
 } // namespace LFortran
 
