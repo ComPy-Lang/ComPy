@@ -15,9 +15,13 @@ _CPack_Packages
 version
 src/libasr/config.h
 src/libasr/asr.h
+src/compy/ast.h
 src/bin/compy
 inst/*
 src/compy/parser/tokenizer.cpp
+src/compy/parser/parser.tab.cc
+src/compy/parser/parser.tab.hh
+src/compy/parser/parser.output
 
 ## libraries
 *.a

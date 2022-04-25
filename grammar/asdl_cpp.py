@@ -432,7 +432,7 @@ class TreeVisitorVisitor(ASDLVisitor):
         self.emit(  "void inc_lindent() {", 1)
         self.emit(      "indent_level++;", 2)
         self.emit(      'indtd += "| ";', 2)
-        self.emit(  "}", 1)        
+        self.emit(  "}", 1)
         self.emit(  "void dec_indent() {", 1)
         self.emit(      "indent_level--;", 2)
         self.emit(      "LFORTRAN_ASSERT(indent_level >= 0);", 2)
@@ -535,9 +535,9 @@ class TreeVisitorVisitor(ASDLVisitor):
                     self.emit("self().visit_%s(*x.m_%s[i]);" % (field.type, field.name), level+1)
                 else:
                     self.emit("self().visit_%s(x.m_%s[i]);" % (field.type, field.name), level+1)
-                self.emit(  'dec_indent();', level+1)      
+                self.emit(  'dec_indent();', level+1)
                 self.emit("}", level)
-            elif field.opt: 
+            elif field.opt:
                 self.emit('s.append("\\n" + indtd + "%s" + "%s=");' % (arr, field.name), 2)
                 if last:
                     self.emit('last = true;', 2)
@@ -562,7 +562,7 @@ class TreeVisitorVisitor(ASDLVisitor):
                     self.emit('s.append("\\n" + indtd + "%s" + "%s=");' % (arr, field.name), level)
                     self.emit("for (size_t i=0; i<x.n_%s; i++) {" % field.name, level)
                     self.emit(  "s.append(x.m_%s[i]);" % (field.name), level+1)
-                    self.emit(  'if (i < x.n_%s-1) s.append(" ");' % (field.name), level+1)            
+                    self.emit(  'if (i < x.n_%s-1) s.append(" ");' % (field.name), level+1)
                     self.emit("}", level)
                 else:
                     if field.opt:
@@ -587,7 +587,7 @@ class TreeVisitorVisitor(ASDLVisitor):
                 self.emit(  'last = i == x.n_%s-1;' % field.name, level+1)
                 self.emit(  'attached = false;', level+1)
                 self.emit(  "self().visit_%s(*x.m_%s[i]);" % (mod_name, field.name), level+1)
-                self.emit(  'dec_indent();', level+1)   
+                self.emit(  'dec_indent();', level+1)
                 self.emit("}", level)
             elif field.type == "symbol_table":
                 assert not field.opt
@@ -1697,7 +1697,7 @@ def main(argv):
         print("Assuming default values of AST.asdl and ast.h")
         here = os.path.dirname(__file__)
         def_file = os.path.join(here, "AST.asdl")
-        out_file = os.path.join(here, "..", "src", "lpython", "ast.h")
+        out_file = os.path.join(here, "..", "src", "compy", "ast.h")
     else:
         print("invalid arguments")
         return 2
@@ -1712,8 +1712,8 @@ def main(argv):
         "mod": mod.name.lower(),
         "types": types_,
     }
-    if subs["MOD"] == "LPYTHON":
-        subs["MOD"] = "LPython::AST"
+    if subs["MOD"] == "COMPY":
+        subs["MOD"] = "ComPy::AST"
         subs["mod"] = "ast"
     is_asr = (mod.name.upper() == "ASR")
     fp = open(out_file, "w", encoding="utf-8")

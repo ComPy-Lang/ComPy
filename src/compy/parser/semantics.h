@@ -11,7 +11,7 @@
 
 #include <cstring>
 
-#include <compy/python_ast.h>
+#include <compy/ast.h>
 #include <libasr/string_utils.h>
 
 // This is only used in parser.tab.cc, nowhere else, so we simply include

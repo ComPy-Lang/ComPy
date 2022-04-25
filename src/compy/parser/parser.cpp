@@ -34,7 +34,7 @@ Result<ComPy::AST::Module_t*> parse(Allocator &al, const std::string &s,
         l.last=p.result[p.result.size()-1]->base.loc.last;
     }
     return (ComPy::AST::Module_t*)ComPy::AST::make_Module_t(al, l,
-        p.result.p, p.result.size(), nullptr, 0);
+        p.result.p, p.result.size());
 }
 
 void Parser::parse(const std::string &input)
