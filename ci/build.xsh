@@ -16,6 +16,7 @@ python grammar/asdl_cpp.py grammar/ASR.asdl src/libasr/asr.h
 
 # Generate the tokenizer and parser
 pushd src/compy/parser && re2c -W -b tokenizer.re -o tokenizer.cpp && popd
+pushd src/lpython/parser && bison -Wall -d -r all parser.yy && popd
 
 cmake -G $LFORTRAN_CMAKE_GENERATOR -DCMAKE_VERBOSE_MAKEFILE=ON -DWITH_LLVM=yes -DCMAKE_PREFIX_PATH=$CONDA_PREFIX -DCMAKE_INSTALL_PREFIX=$CONDA_PREFIX -DWITH_LFORTRAN_BINARY_MODFILES=no .
 cmake --build . --target install
