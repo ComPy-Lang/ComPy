@@ -174,6 +174,8 @@ void yyerror(YYLTYPE *yyloc, LFortran::Parser &p, const std::string &msg)
 
 %type <ast> id
 %type <ast> expr
+%type <vec_ast> expr_list
+%type <vec_ast> expr_list_opt
 %type <ast> script_unit
 %type <ast> statement
 %type <vec_ast> statements
@@ -190,6 +192,9 @@ void yyerror(YYLTYPE *yyloc, LFortran::Parser &p, const std::string &msg)
 %type <ast> if_statement
 %type <ast> elif_statement
 %type <ast> for_statement
+%type <ast> function_def
+%type <vec_arg> parameter_list_opt
+%type <arg> parameter
 %type <vec_ast> sep
 %type <ast> sep1
 
@@ -248,6 +253,7 @@ single_line_statement
 multi_line_statement
     : if_statement
     | for_statement
+    | function_def
     ;
 
 expression_statement
@@ -308,6 +314,33 @@ for_statement
         $$ = FOR_02($2, $4, $7, $11, @$); }
     ;
 
+parameter
+    : id { $$ = ARGS_01($1, @$); }
+    | id ":" expr { $$ = ARGS_02($1, $3, @$); }
+    ;
+
+parameter_list_opt
+    : parameter_list_opt "," parameter { $$ = $1; PLIST_ADD($$, $3); }
+    | parameter { LIST_NEW($$); PLIST_ADD($$, $1); }
+    | %empty { LIST_NEW($$); }
+    ;
+
+function_def
+    : KW_DEF id "(" parameter_list_opt ")" ":" sep statements {
+        $$ = FUNCTION_01($2, $4, $8, @$); }
+    | KW_DEF id "(" parameter_list_opt ")" "->" expr ":"
+        sep statements { $$ = FUNCTION_02($2, $4, $7, $10, @$); }
+    ;
+
+expr_list_opt
+    : expr_list { $$ = $1; }
+    | %empty { LIST_NEW($$); }
+
+expr_list
+    : expr_list "," expr { $$ = $1; LIST_ADD($$, $3); }
+    | expr { LIST_NEW($$); LIST_ADD($$, $1); }
+    ;
+
 expr
     : id { $$ = $1; }
     | TK_INTEGER { $$ = INTEGER($1, @$); }
@@ -316,6 +349,7 @@ expr
     | TK_TRUE { $$ = BOOL(true, @$); }
     | TK_FALSE { $$ = BOOL(false, @$); }
     | "(" expr ")" { $$ = $2; }
+    | id "(" expr_list_opt ")" { $$ = CALL_01($1, $3, @$); }
 
     | expr "+" expr { $$ = BINOP($1, Add, $3, @$); }
     | expr "-" expr { $$ = BINOP($1, Sub, $3, @$); }
