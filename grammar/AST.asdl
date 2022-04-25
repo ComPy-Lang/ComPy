@@ -10,6 +10,7 @@ module ComPy
          | Return(expr? value)
          | Assign(expr* targets, expr value)
          | AugAssign(expr target, operator op, expr value)
+         | AnnAssign(expr target, expr annotation, expr? value)
          | For(expr target, expr iter, stmt* body, stmt* orelse)
          | If(expr test, stmt* body, stmt* orelse)
          | Expr(expr value)

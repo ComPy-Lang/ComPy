@@ -183,6 +183,7 @@ void yyerror(YYLTYPE *yyloc, LFortran::Parser &p, const std::string &msg)
 %type <ast> single_line_statement
 %type <ast> multi_line_statement
 %type <ast> assignment_statement
+%type <ast> ann_assignment_statement
 %type <vec_ast> target_list
 %type <ast> target
 %type <ast> augassign_statement
@@ -245,6 +246,7 @@ statement
 
 single_line_statement
     : assignment_statement
+    | ann_assignment_statement
     | augassign_statement
     | expression_statement
     | return_statement
@@ -271,6 +273,11 @@ target_list
 
 assignment_statement
     : target_list expr { $$ = ASSIGNMENT($1, $2, @$); }
+    ;
+
+ann_assignment_statement
+    : target ":" expr { $$ = ANNASSIGN_01($1, $3, @$); }
+    | target ":" expr "=" expr { $$ = ANNASSIGN_02($1, $3, $5, @$); }
     ;
 
 augassign_statement

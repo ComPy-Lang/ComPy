@@ -67,6 +67,11 @@ static inline T** vec_cast(const Vec<ast_t*> &x) {
 #define TARGET_ID(name, l) make_Name_t(p.m_a, l, \
         name2char(name), expr_contextType::Store)
 
+#define ANNASSIGN_01(x, y, l) make_AnnAssign_t(p.m_a, l, \
+        EXPR(x), EXPR(y), nullptr)
+#define ANNASSIGN_02(x, y, val, l) make_AnnAssign_t(p.m_a, l, \
+        EXPR(x), EXPR(y), EXPR(val))
+
 #define OPERATOR(op, l) operatorType::op
 #define AUGASSIGN_01(x, op, y, l) make_AugAssign_t(p.m_a, l, EXPR(x), op, EXPR(y))
 
