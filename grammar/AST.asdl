@@ -6,6 +6,7 @@ module ComPy
     mod = Module(stmt* body)
 
     stmt = Expr(expr value)
+         | Assign(expr* targets, expr value)
 
     expr = BinOp(expr left, operator op, expr right)
          | ConstantInt(int value, string? kind)

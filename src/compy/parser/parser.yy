@@ -172,7 +172,16 @@ void yyerror(YYLTYPE *yyloc, LFortran::Parser &p, const std::string &msg)
 
 // Nonterminal tokens
 
+%type <ast> id
 %type <ast> expr
+%type <ast> script_unit
+%type <ast> statement
+%type <ast> single_line_statement
+%type <ast> assignment_statement
+%type <vec_ast> target_list
+%type <ast> target
+%type <vec_ast> sep
+%type <ast> sep1
 
 // Precedence
 
@@ -181,7 +190,7 @@ void yyerror(YYLTYPE *yyloc, LFortran::Parser &p, const std::string &msg)
 //%precedence "not"
 //%left "==" "/=" "<" "<=" ">" ">="
 %left "-" "+"
-%left "*" "/"
+%left "%" "/" "*"
 //%precedence UMINUS
 %right "**"
 
@@ -199,21 +208,60 @@ void yyerror(YYLTYPE *yyloc, LFortran::Parser &p, const std::string &msg)
 // Higher %dprec means higher precedence
 
 units
-    : expr TK_NEWLINE { RESULT($1); }
+    : units script_unit   { RESULT($2); }
+    | script_unit         { RESULT($1); }
+    | sep
+    ;
+
+script_unit
+    : statement sep   { $$ = SCRIPT_UNIT_STMT($1); }
+    | expr sep        { $$ = SCRIPT_UNIT_EXPR($1); }
+    ;
+
+statement
+    : single_line_statement
+    ;
+
+single_line_statement
+    : assignment_statement
+    ;
+
+target
+    : id { $$ = TARGET_ID($1, @$); }
+    ;
+
+target_list
+    : target_list target "=" { $$ = $1; LIST_ADD($$, $2); }
+    | target "=" { LIST_NEW($$); LIST_ADD($$, $1); }
+    ;
+
+assignment_statement
+    : target_list expr { $$ = ASSIGNMENT($1, $2, @$); }
     ;
 
 expr
-// ### primary
-    : TK_NAME { $$ = SYMBOL($1, @$); }
+    : id { $$ = $1; }
     | TK_INTEGER { $$ = INTEGER($1, @$); }
     | "(" expr ")" { $$ = $2; }
 
+    | expr "+" expr { $$ = BINOP($1, Add, $3, @$); }
+    | expr "-" expr { $$ = BINOP($1, Sub, $3, @$); }
+    | expr "*" expr { $$ = BINOP($1, Mult, $3, @$); }
+    | expr "/" expr { $$ = BINOP($1, Div, $3, @$); }
+    | expr "%" expr { $$ = BINOP($1, Mod, $3, @$); }
+    | expr "**" expr { $$ = BINOP($1, Pow, $3, @$); }
+    ;
 
-// ### level-2
-    | expr "+" expr { $$ = ADD($1, $3, @$); }
-    | expr "-" expr { $$ = SUB($1, $3, @$); }
-    | expr "*" expr { $$ = MUL($1, $3, @$); }
-    | expr "/" expr { $$ = DIV($1, $3, @$); }
-    | expr "**" expr { $$ = POW($1, $3, @$); }
+id
+    : TK_NAME { $$ = SYMBOL($1, @$); }
+    ;
 
+sep
+    : sep sep1 { $$ = $1; LIST_ADD($$, $2); }
+    | sep1 { LIST_NEW($$); LIST_ADD($$, $1); }
+    ;
+
+sep1
+    : TK_NEWLINE {}
+    | ";" {}
     ;
