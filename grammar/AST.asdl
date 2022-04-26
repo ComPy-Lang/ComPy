@@ -5,14 +5,20 @@ module ComPy
 {
     mod = Module(stmt* body)
 
-    stmt = Expr(expr value)
+    stmt = FunctionDef(identifier name, arguments args,
+                stmt* body, expr? returns)
          | Return(expr? value)
          | Assign(expr* targets, expr value)
          | AugAssign(expr target, operator op, expr value)
+         | AnnAssign(expr target, expr annotation, expr? value)
+         | For(expr target, expr iter, stmt* body, stmt* orelse)
+         | If(expr test, stmt* body, stmt* orelse)
+         | Expr(expr value)
 
     expr = BinOp(expr left, operator op, expr right)
          | UnaryOp(unaryop op, expr operand)
          | Compare(expr left, cmpop ops, expr* comparators)
+         | Call(expr func, expr* args)
 
          | ConstantStr(string value, string? kind)
          | ConstantInt(int value, string? kind)
@@ -28,4 +34,7 @@ module ComPy
     unaryop = UAdd | USub
 
     cmpop = Eq | NotEq | Lt | LtE | Gt | GtE
+
+    arguments = (arg* args)
+    arg = (identifier arg, expr? annotation)
 }

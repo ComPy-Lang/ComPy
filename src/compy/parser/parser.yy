@@ -174,15 +174,28 @@ void yyerror(YYLTYPE *yyloc, LFortran::Parser &p, const std::string &msg)
 
 %type <ast> id
 %type <ast> expr
+%type <vec_ast> expr_list
+%type <vec_ast> expr_list_opt
 %type <ast> script_unit
 %type <ast> statement
+%type <vec_ast> statements
+%type <vec_ast> statements1
 %type <ast> single_line_statement
+%type <ast> multi_line_statement
 %type <ast> assignment_statement
+%type <ast> ann_assignment_statement
 %type <vec_ast> target_list
 %type <ast> target
 %type <ast> augassign_statement
 %type <operator_type> augassign_op
+%type <ast> expression_statement
 %type <ast> return_statement
+%type <ast> if_statement
+%type <ast> elif_statement
+%type <ast> for_statement
+%type <ast> function_def
+%type <vec_arg> parameter_list_opt
+%type <arg> parameter
 %type <vec_ast> sep
 %type <ast> sep1
 
@@ -214,18 +227,39 @@ units
     ;
 
 script_unit
-    : statement sep   { $$ = SCRIPT_UNIT_STMT($1); }
-    | expr sep        { $$ = SCRIPT_UNIT_EXPR($1); }
+    : statement
+    ;
+
+statements
+    : TK_INDENT statements1 TK_DEDENT { $$ = $2; }
+    ;
+
+statements1
+    : statements1 statement { $$ = $1; LIST_ADD($$, $2); }
+    | statement { LIST_NEW($$); LIST_ADD($$, $1); }
     ;
 
 statement
-    : single_line_statement
+    : single_line_statement sep
+    | multi_line_statement
     ;
 
 single_line_statement
     : assignment_statement
+    | ann_assignment_statement
     | augassign_statement
+    | expression_statement
     | return_statement
+    ;
+
+multi_line_statement
+    : if_statement
+    | for_statement
+    | function_def
+    ;
+
+expression_statement
+    : expr { $$ = EXPR_01($1, @$); }
     ;
 
 target
@@ -239,6 +273,11 @@ target_list
 
 assignment_statement
     : target_list expr { $$ = ASSIGNMENT($1, $2, @$); }
+    ;
+
+ann_assignment_statement
+    : target ":" expr { $$ = ANNASSIGN_01($1, $3, @$); }
+    | target ":" expr "=" expr { $$ = ANNASSIGN_02($1, $3, $5, @$); }
     ;
 
 augassign_statement
@@ -259,6 +298,56 @@ return_statement
     | KW_RETURN expr { $$ = RETURN_02($2, @$); }
     ;
 
+
+elif_statement
+    : KW_ELIF expr ":" sep statements { $$ = IF_STMT_01($2, $5, @$); }
+    | KW_ELIF expr ":" sep statements KW_ELSE ":" sep statements {
+        $$ = IF_STMT_02($2, $5, $9, @$); }
+    | KW_ELIF expr ":" sep statements elif_statement {
+        $$ = IF_STMT_03($2, $5, $6, @$); }
+    ;
+
+if_statement
+    : KW_IF expr ":" sep statements { $$ = IF_STMT_01($2, $5, @$); }
+    | KW_IF expr ":" sep statements KW_ELSE ":" sep statements {
+        $$ = IF_STMT_02($2, $5, $9, @$); }
+    | KW_IF expr ":" sep statements elif_statement {
+        $$ = IF_STMT_03($2, $5, $6, @$); }
+    ;
+
+for_statement
+    : KW_FOR target KW_IN expr ":" sep statements { $$ = FOR_01($2, $4, $7, @$); }
+    | KW_FOR target KW_IN expr ":" sep statements KW_ELSE ":" sep statements {
+        $$ = FOR_02($2, $4, $7, $11, @$); }
+    ;
+
+parameter
+    : id { $$ = ARGS_01($1, @$); }
+    | id ":" expr { $$ = ARGS_02($1, $3, @$); }
+    ;
+
+parameter_list_opt
+    : parameter_list_opt "," parameter { $$ = $1; PLIST_ADD($$, $3); }
+    | parameter { LIST_NEW($$); PLIST_ADD($$, $1); }
+    | %empty { LIST_NEW($$); }
+    ;
+
+function_def
+    : KW_DEF id "(" parameter_list_opt ")" ":" sep statements {
+        $$ = FUNCTION_01($2, $4, $8, @$); }
+    | KW_DEF id "(" parameter_list_opt ")" "->" expr ":"
+        sep statements { $$ = FUNCTION_02($2, $4, $7, $10, @$); }
+    ;
+
+expr_list_opt
+    : expr_list { $$ = $1; }
+    | %empty { LIST_NEW($$); }
+
+expr_list
+    : expr_list "," expr { $$ = $1; LIST_ADD($$, $3); }
+    | expr { LIST_NEW($$); LIST_ADD($$, $1); }
+    ;
+
 expr
     : id { $$ = $1; }
     | TK_INTEGER { $$ = INTEGER($1, @$); }
@@ -267,6 +356,7 @@ expr
     | TK_TRUE { $$ = BOOL(true, @$); }
     | TK_FALSE { $$ = BOOL(false, @$); }
     | "(" expr ")" { $$ = $2; }
+    | id "(" expr_list_opt ")" { $$ = CALL_01($1, $3, @$); }
 
     | expr "+" expr { $$ = BINOP($1, Add, $3, @$); }
     | expr "-" expr { $$ = BINOP($1, Sub, $3, @$); }

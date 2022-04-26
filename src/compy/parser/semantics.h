@@ -54,26 +54,73 @@ static inline T** vec_cast(const Vec<ast_t*> &x) {
 
 #define EXPR(x) (down_cast<expr_t>(x))
 #define STMT(x) (down_cast<stmt_t>(x))
-#define EXPR2STMT(x) ((stmt_t*)make_Expr_t(p.m_a, x->base.loc, x))
-
 #define RESULT(x) p.result.push_back(p.m_a, STMT(x))
-#define SCRIPT_UNIT_STMT(x) (ast_t*)x
-#define SCRIPT_UNIT_EXPR(x) (ast_t*)EXPR2STMT(EXPR(x))
 
 #define LIST_NEW(l) l.reserve(p.m_a, 4)
 #define LIST_ADD(l, x) l.push_back(p.m_a, x)
 #define PLIST_ADD(l, x) l.push_back(p.m_a, *x)
+
+#define EXPR_01(e, l) make_Expr_t(p.m_a, l, EXPR(e))
 
 #define ASSIGNMENT(targets, val, l) make_Assign_t(p.m_a, l, \
         EXPRS(targets), targets.size(), EXPR(val))
 #define TARGET_ID(name, l) make_Name_t(p.m_a, l, \
         name2char(name), expr_contextType::Store)
 
+#define ANNASSIGN_01(x, y, l) make_AnnAssign_t(p.m_a, l, \
+        EXPR(x), EXPR(y), nullptr)
+#define ANNASSIGN_02(x, y, val, l) make_AnnAssign_t(p.m_a, l, \
+        EXPR(x), EXPR(y), EXPR(val))
+
 #define OPERATOR(op, l) operatorType::op
 #define AUGASSIGN_01(x, op, y, l) make_AugAssign_t(p.m_a, l, EXPR(x), op, EXPR(y))
 
 #define RETURN_01(l) make_Return_t(p.m_a, l, nullptr)
 #define RETURN_02(e, l) make_Return_t(p.m_a, l, EXPR(e))
+
+#define IF_STMT_01(e, stmt, l) make_If_t(p.m_a, l, \
+        EXPR(e), STMTS(stmt), stmt.size(), nullptr, 0)
+#define IF_STMT_02(e, stmt, orelse, l) make_If_t(p.m_a, l, \
+        EXPR(e), STMTS(stmt), stmt.size(), STMTS(orelse), orelse.size())
+#define IF_STMT_03(e, stmt, orelse, l) make_If_t(p.m_a, l, \
+        EXPR(e), STMTS(stmt), stmt.size(), STMTS(A2LIST(p.m_a, orelse)), 1)
+
+#define FOR_01(target, iter, stmts, l) make_For_t(p.m_a, l, \
+        EXPR(target), EXPR(iter), STMTS(stmts), stmts.size(), nullptr, 0)
+#define FOR_02(target, iter, stmts, orelse, l) make_For_t(p.m_a, l, \
+        EXPR(target), EXPR(iter), STMTS(stmts), stmts.size(), \
+        STMTS(orelse), orelse.size())
+
+static inline arg_t *FUNC_ARG(Allocator &al, Location &l, char *arg, expr_t* e) {
+    arg_t *r = al.allocate<arg_t>();
+    r->loc = l;
+    r->m_arg = arg;
+    r->m_annotation = e;
+    return r;
+}
+
+static inline arguments_t FUNC_ARGS(Location &l,
+    arg_t* m_args, size_t n_args) {
+    arguments_t r;
+    r.loc = l;
+    r.m_args = m_args;
+    r.n_args = n_args;
+    return r;
+}
+
+#define ARGS_01(arg, l) FUNC_ARG(p.m_a, l, name2char((ast_t *)arg), nullptr)
+#define ARGS_02(arg, annotation, l) FUNC_ARG(p.m_a, l, \
+        name2char((ast_t *)arg), EXPR(annotation))
+#define FUNCTION_01(id, args, stmts, l) \
+        make_FunctionDef_t(p.m_a, l, name2char(id), \
+        FUNC_ARGS(l, args.p, args.n), \
+        STMTS(stmts), stmts.size(), \
+        nullptr)
+#define FUNCTION_02(id, args, return, stmts, l) \
+        make_FunctionDef_t(p.m_a, l, name2char(id), \
+        FUNC_ARGS(l, args.p, args.n), \
+        STMTS(stmts), stmts.size(), \
+        EXPR(return))
 
 #define BINOP(x, op, y, l) make_BinOp_t(p.m_a, l, \
         EXPR(x), operatorType::op, EXPR(y))
@@ -87,6 +134,8 @@ EXPR(x), cmpopType::op, EXPRS(A2LIST(p.m_a, y)), 1)
 #define FLOAT(x, l) make_ConstantFloat_t(p.m_a, l, \
         std::stof(x.c_str(p.m_a)), nullptr)
 #define BOOL(x, l) make_ConstantBool_t(p.m_a, l, x, nullptr)
+#define CALL_01(func, args, l) make_Call_t(p.m_a, l, \
+        EXPR(func), EXPRS(args), args.size())
 
 
 #endif
