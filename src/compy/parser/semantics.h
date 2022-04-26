@@ -99,8 +99,7 @@ static inline arg_t *FUNC_ARG(Allocator &al, Location &l, char *arg, expr_t* e) 
     return r;
 }
 
-static inline arguments_t FUNC_ARGS(Location &l,
-    arg_t* m_args, size_t n_args) {
+static inline arguments_t FUNC_ARGS(Location &l, arg_t* m_args, size_t n_args) {
     arguments_t r;
     r.loc = l;
     r.m_args = m_args;
@@ -115,12 +114,12 @@ static inline arguments_t FUNC_ARGS(Location &l,
         make_FunctionDef_t(p.m_a, l, name2char(id), \
         FUNC_ARGS(l, args.p, args.n), \
         STMTS(stmts), stmts.size(), \
-        nullptr)
+        nullptr, 0, nullptr)
 #define FUNCTION_02(id, args, return, stmts, l) \
         make_FunctionDef_t(p.m_a, l, name2char(id), \
         FUNC_ARGS(l, args.p, args.n), \
         STMTS(stmts), stmts.size(), \
-        EXPR(return))
+        nullptr, 0, EXPR(return))
 
 #define BINOP(x, op, y, l) make_BinOp_t(p.m_a, l, \
         EXPR(x), operatorType::op, EXPR(y))
