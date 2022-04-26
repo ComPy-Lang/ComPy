@@ -4,7 +4,7 @@ set(SRC
     parser/parser.tab.cc
     semantics/ast_to_asr.cpp
 
-    # python_evaluator.cpp
+    compy_evaluator.cpp
 
     pickle.cpp
     # python_serialization.cpp
