@@ -6,7 +6,7 @@ set(SRC
 
     # python_evaluator.cpp
 
-    # pickle.cpp
+    pickle.cpp
     # python_serialization.cpp
 
     utils.cpp

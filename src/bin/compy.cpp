@@ -5,6 +5,7 @@
 
 #include <libasr/stacktrace.h>
 #include <compy/utils.h>
+#include <compy/pickle.h>
 #include <compy/semantics/ast_to_asr.h>
 #include <compy/parser/tokenizer.h>
 #include <compy/parser/parser.h>
@@ -73,6 +74,38 @@ int emit_ast(const std::string &infile,
     return 0;
 }
 
+int emit_asr(const std::string &infile, CompilerOptions &compiler_options)
+{
+    Allocator al(4*1024);
+    LFortran::diag::Diagnostics diagnostics;
+    LFortran::LocationManager lm;
+    lm.in_filename = infile;
+    std::string input = LFortran::read_file(infile);
+    lm.init_simple(input);
+    LFortran::Result<LFortran::ComPy::AST::ast_t*> r1 = parse_file(
+        al, infile, diagnostics);
+    std::cerr << diagnostics.render(input, lm, compiler_options);
+    if (!r1.ok) {
+        return 1;
+    }
+    LFortran::ComPy::AST::ast_t* ast = r1.result;
+
+    diagnostics.diagnostics.clear();
+    LFortran::Result<LFortran::ASR::TranslationUnit_t*>
+        r = LFortran::ComPy::ast_to_asr(al, *ast, diagnostics, true,
+            compiler_options.symtab_only);
+    std::cerr << diagnostics.render(input, lm, compiler_options);
+    if (!r.ok) {
+        LFORTRAN_ASSERT(diagnostics.has_error())
+        return 2;
+    }
+    LFortran::ASR::TranslationUnit_t* asr = r.result;
+
+    std::cout << LFortran::pickle(*asr, compiler_options.use_colors,
+            compiler_options.indent) << std::endl;
+    return 0;
+}
+
 } // anonymous namespace
 
 int main(int argc, char *argv[])
@@ -84,6 +117,7 @@ int main(int argc, char *argv[])
         bool arg_version = false;
         bool show_tokens = false;
         bool show_ast = false;
+        bool show_asr = false;
 
         CompilerOptions compiler_options;
 
@@ -97,6 +131,7 @@ int main(int argc, char *argv[])
         // ComPy specific options
         app.add_flag("--show-tokens", show_tokens, "Show tokens for the given file and exit");
         app.add_flag("--show-ast", show_ast, "Show AST for the given file and exit");
+        app.add_flag("--show-asr", show_asr, "Show ASR for the given file and exit");
         app.add_flag("--indent", compiler_options.indent, "Indented print ASR/AST");
 
         app.get_formatter()->column_width(25);
@@ -125,6 +160,9 @@ int main(int argc, char *argv[])
         }
         if (show_ast) {
             return emit_ast(arg_file, compiler_options);
+        }
+        if (show_asr) {
+            return emit_asr(arg_file, compiler_options);
         }
 
     } catch(const LFortran::LFortranException &e) {
