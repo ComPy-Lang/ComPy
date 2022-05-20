@@ -350,7 +350,7 @@ int main(int argc, char *argv[])
 #endif
         }
 
-        if (endswith(arg_file, ".py"))
+        if (endswith(arg_file, ".cp"))
         {
             std::string tmp_o = outfile + ".tmp.o";
             int err;
