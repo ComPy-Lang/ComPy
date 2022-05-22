@@ -203,6 +203,7 @@ void yyerror(YYLTYPE *yyloc, LFortran::Parser &p, const std::string &msg)
 %type <ast> for_statement
 %type <ast> function_def
 %type <ast> tuple_list
+%type <ast> while_statement
 %type <ast> slice_item
 %type <vec_ast> slice_item_list
 %type <vec_arg> parameter_list_opt
@@ -277,6 +278,7 @@ multi_line_statement
     : if_statement
     | for_statement
     | function_def
+    | while_statement
     ;
 
 expression_statement
@@ -409,9 +411,16 @@ function_def
         sep statements { $$ = FUNCTION_04($1, $3, $5, $8, $11, @$); }
     ;
 
+while_statement
+    : KW_WHILE expr ":" sep statements { $$ = WHILE_STMT_01($2, $5, @$); }
+    | KW_WHILE expr ":" sep statements KW_ELSE ":" sep statements {
+        $$ = WHILE_STMT_02($2, $5, $9, @$); }
+    ;
+
 slice_item_list
     : slice_item_list "," slice_item { $$ = $1; LIST_ADD($$, $3); }
     | slice_item { LIST_NEW($$); LIST_ADD($$, $1); }
+    ;
 
 slice_item
     : ":"                    { $$ = SLICE_01(nullptr, nullptr, nullptr, @$); }

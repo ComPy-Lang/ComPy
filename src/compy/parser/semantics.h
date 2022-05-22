@@ -176,6 +176,11 @@ static inline arguments_t FUNC_ARGS(Location &l, arg_t* m_args, size_t n_args) {
         STMTS(stmts), stmts.size(), \
         EXPRS(decorator), decorator.size(), EXPR(return))
 
+#define WHILE_STMT_01(e, stmts, l) make_While_t(p.m_a, l, \
+        EXPR(e), STMTS(stmts), stmts.size(), nullptr, 0)
+#define WHILE_STMT_02(e, stmts, orelse, l) make_While_t(p.m_a, l, \
+        EXPR(e), STMTS(stmts), stmts.size(), STMTS(orelse), orelse.size())
+
 static inline ast_t* SLICE(Allocator &al, Location &l,
         ast_t *lower, ast_t *upper, ast_t *_step) {
     expr_t* start = EXPR_OPT(lower);

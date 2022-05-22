@@ -13,6 +13,7 @@ module ComPy
           | AnnAssign(expr target, expr annotation, expr? value)
 
           | For(expr target, expr iter, stmt* body, stmt* orelse)
+          | While(expr test, stmt* body, stmt* orelse)
           | If(expr test, stmt* body, stmt* orelse)
           | Raise(expr? exc, expr? cause)
 
