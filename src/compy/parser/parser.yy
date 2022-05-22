@@ -450,6 +450,7 @@ expr
     | TK_TRUE { $$ = BOOL(true, @$); }
     | TK_FALSE { $$ = BOOL(false, @$); }
     | "(" expr ")" { $$ = $2; }
+    | "[" expr_list_opt "]" { $$ = LIST($2, @$); }
     | id "(" expr_list_opt ")" { $$ = CALL_01($1, $3, @$); }
     | id "[" tuple_list "]" { $$ = SUBSCRIPT_01($1, $3, @$); }
     | expr "." id { $$ = ATTRIBUTE_REF($1, $3, @$); }

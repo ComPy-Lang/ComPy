@@ -224,5 +224,7 @@ static inline expr_t* CHECK_TUPLE(expr_t *x) {
         EXPR(value), CHECK_TUPLE(EXPR(slice)), expr_contextType::Load)
 #define ATTRIBUTE_REF(val, attr, l) make_Attribute_t(p.m_a, l, \
         EXPR(val), name2char(attr), expr_contextType::Load)
+#define LIST(e, l) make_List_t(p.m_a, l, \
+        EXPRS(e), e.size(), expr_contextType::Load)
 
 #endif
