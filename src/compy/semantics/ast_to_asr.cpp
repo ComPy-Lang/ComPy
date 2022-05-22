@@ -51,15 +51,6 @@ LFortran::Result<std::string> get_full_path(const std::string &filename,
                 } else {
                     return LFortran::Error();
                 }
-            } else if (filename == "numpy.py") {
-                filename_intrinsic = runtime_library_dir + "/lpython_intrinsic_numpy.py";
-                status = read_file(filename_intrinsic, input);
-                if (status) {
-                    numpy = true;
-                    return filename_intrinsic;
-                } else {
-                    return LFortran::Error();
-                }
             } else {
                 return LFortran::Error();
             }
@@ -86,8 +77,13 @@ ASR::Module_t* load_module(Allocator &al, SymbolTable *symtab,
     }
     LFORTRAN_ASSERT(symtab->parent == nullptr);
 
-    // Parse the module `module_name`.py to AST
-    std::string infile0 = module_name + ".py";
+    // Parse the module `module_name`.cp to AST
+    std::string infile0 = "";
+    if(module_name == "ltypes") {
+        infile0 = module_name + ".py";
+    } else {
+        infile0 = module_name + ".cp";
+    }
     Result<std::string> rinfile = get_full_path(infile0, rl_path, ltypes,
         numpy);
     if (!rinfile.ok) {
