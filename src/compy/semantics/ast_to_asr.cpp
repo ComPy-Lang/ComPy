@@ -1981,6 +1981,54 @@ public:
 
     }
 
+    void visit_Attribute(const AST::Attribute_t &x) {
+        if (AST::is_a<AST::Name_t>(*x.m_value)) {
+            std::string value = AST::down_cast<AST::Name_t>(x.m_value)->m_id;
+            ASR::symbol_t *t = current_scope->get_symbol(value);
+            if (!t) {
+                throw SemanticError("'" + value + "' is not defined in the scope",
+                    x.base.base.loc);
+            }
+            if (ASR::is_a<ASR::Variable_t>(*t)) {
+                ASR::Variable_t *var = ASR::down_cast<ASR::Variable_t>(t);
+                if (ASRUtils::is_complex(*var->m_type)) {
+                    std::string attr = x.m_attr;
+                    if (attr == "imag") {
+                        ASR::expr_t *val = ASR::down_cast<ASR::expr_t>(ASR::make_Var_t(al, x.base.base.loc, t));
+                        int kind = ASRUtils::extract_kind_from_ttype_t(var->m_type);
+                        ASR::ttype_t *dest_type = ASR::down_cast<ASR::ttype_t>(ASR::make_Real_t(al, x.base.base.loc,
+                                                        kind, nullptr, 0));
+                        tmp = ASR::make_ComplexIm_t(al, x.base.base.loc, val, dest_type, nullptr);
+                        return;
+                    } else if (attr == "real") {
+                        ASR::expr_t *val = ASR::down_cast<ASR::expr_t>(ASR::make_Var_t(al, x.base.base.loc, t));
+                        int kind = ASRUtils::extract_kind_from_ttype_t(var->m_type);
+                        ASR::ttype_t *dest_type = ASR::down_cast<ASR::ttype_t>(ASR::make_Real_t(al, x.base.base.loc,
+                                                        kind, nullptr, 0));
+                        ASR::expr_t *value = ASR::down_cast<ASR::expr_t>(ASRUtils::make_Cast_t_value(
+                            al, val->base.loc, val, ASR::cast_kindType::ComplexToReal, dest_type));
+                        tmp = ASR::make_ComplexRe_t(al, x.base.base.loc, val, dest_type, ASRUtils::expr_value(value));
+                        return;
+                    } else {
+                        throw SemanticError("'" + attr + "' is not implemented for Complex type",
+                            x.base.base.loc);
+                    }
+
+                } else {
+                    throw SemanticError("Only Complex type supported for now in Attribute",
+                        x.base.base.loc);
+                }
+            } else {
+                throw SemanticError("Only Variable type is supported for now in Attribute",
+                    x.base.base.loc);
+            }
+
+        } else {
+            throw SemanticError("Only Name is supported for now in Attribute",
+                x.base.base.loc);
+        }
+    }
+
     void visit_If(const AST::If_t &x) {
         visit_expr(*x.m_test);
         ASR::expr_t *test = ASRUtils::EXPR(tmp);
