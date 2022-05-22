@@ -95,7 +95,6 @@ static inline ASR::ttype_t* expr_type(const ASR::expr_t *f)
     switch (f->type) {
         case ASR::exprType::BoolOp: { return ((ASR::BoolOp_t*)f)->m_type; }
         case ASR::exprType::BinOp: { return ((ASR::BinOp_t*)f)->m_type; }
-        case ASR::exprType::StrOp: { return ((ASR::StrOp_t*)f)->m_type; }
         case ASR::exprType::UnaryOp: { return ((ASR::UnaryOp_t*)f)->m_type; }
         case ASR::exprType::ComplexConstructor: { return ((ASR::ComplexConstructor_t*)f)->m_type; }
         case ASR::exprType::NamedExpr: { return ((ASR::NamedExpr_t*)f)->m_type; }
@@ -109,17 +108,37 @@ static inline ASR::ttype_t* expr_type(const ASR::expr_t *f)
         case ASR::exprType::RealConstant: { return ((ASR::RealConstant_t*)f)->m_type; }
         case ASR::exprType::ComplexConstant: { return ((ASR::ComplexConstant_t*)f)->m_type; }
         case ASR::exprType::SetConstant: { return ((ASR::SetConstant_t*)f)->m_type; }
+        case ASR::exprType::SetLen: { return ((ASR::SetLen_t*)f)->m_type; }
         case ASR::exprType::ListConstant: { return ((ASR::ListConstant_t*)f)->m_type; }
         case ASR::exprType::ListConcat: { return ((ASR::ListConcat_t*)f)->m_type; }
+        case ASR::exprType::ListLen: { return ((ASR::ListLen_t*)f)->m_type; }
         case ASR::exprType::TupleConstant: { return ((ASR::TupleConstant_t*)f)->m_type; }
+        case ASR::exprType::TupleLen: { return ((ASR::TupleLen_t*)f)->m_type; }
         case ASR::exprType::LogicalConstant: { return ((ASR::LogicalConstant_t*)f)->m_type; }
         case ASR::exprType::StringConstant: { return ((ASR::StringConstant_t*)f)->m_type; }
+        case ASR::exprType::StringConcat: { return ((ASR::StringConcat_t*)f)->m_type; }
+        case ASR::exprType::StringRepeat: { return ((ASR::StringRepeat_t*)f)->m_type; }
+        case ASR::exprType::StringLen: { return ((ASR::StringLen_t*)f)->m_type; }
+        case ASR::exprType::StringItem: { return ((ASR::StringItem_t*)f)->m_type; }
+        case ASR::exprType::StringSection: { return ((ASR::StringSection_t*)f)->m_type; }
         case ASR::exprType::DictConstant: { return ((ASR::DictConstant_t*)f)->m_type; }
+        case ASR::exprType::DictLen: { return ((ASR::DictLen_t*)f)->m_type; }
         case ASR::exprType::IntegerBOZ: { return ((ASR::IntegerBOZ_t*)f)->m_type; }
         case ASR::exprType::Var: { return EXPR2VAR(f)->m_type; }
         case ASR::exprType::ArrayRef: { return ((ASR::ArrayRef_t*)f)->m_type; }
+        case ASR::exprType::ArraySize: { return ((ASR::ArraySize_t*)f)->m_type; }
+        case ASR::exprType::ArrayBound: { return ((ASR::ArrayBound_t*)f)->m_type; }
         case ASR::exprType::DerivedRef: { return ((ASR::DerivedRef_t*)f)->m_type; }
         case ASR::exprType::Cast: { return ((ASR::Cast_t*)f)->m_type; }
+        case ASR::exprType::ComplexRe: { return ((ASR::ComplexRe_t*)f)->m_type; }
+        case ASR::exprType::ComplexIm: { return ((ASR::ComplexIm_t*)f)->m_type; }
+        case ASR::exprType::DictItem: { return ((ASR::DictItem_t*)f)->m_type; }
+        case ASR::exprType::ListItem: { return ((ASR::ListItem_t*)f)->m_type; }
+        case ASR::exprType::TupleItem: { return ((ASR::TupleItem_t*)f)->m_type; }
+        case ASR::exprType::ListSection: { return ((ASR::ListSection_t*)f)->m_type; }
+        case ASR::exprType::ListPop: { return ((ASR::ListPop_t*)f)->m_type; }
+        case ASR::exprType::DictPop: { return ((ASR::DictPop_t*)f)->m_type; }
+        case ASR::exprType::SetPop: { return ((ASR::SetPop_t*)f)->m_type; }
         default : throw LFortranException("Not implemented");
     }
 }
@@ -162,13 +181,30 @@ static inline std::string type_to_str_python(const ASR::ttype_t *t)
 {
     switch (t->type) {
         case ASR::ttypeType::Integer: {
-            return "int";
+            ASR::Integer_t *i = (ASR::Integer_t*)t;
+            switch (i->m_kind) {
+                case 1: { return "i8"; }
+                case 2: { return "i16"; }
+                case 4: { return "i32"; }
+                case 8: { return "i64"; }
+                default: { throw LFortranException("Integer kind not supported"); }
+            }
         }
         case ASR::ttypeType::Real: {
-            return "float";
+            ASR::Real_t *r = (ASR::Real_t*)t;
+            switch (r->m_kind) {
+                case 4: { return "f32"; }
+                case 8: { return "f64"; }
+                default: { throw LFortranException("Float kind not supported"); }
+            }
         }
         case ASR::ttypeType::Complex: {
-            return "complex";
+            ASR::Complex_t *c = (ASR::Complex_t*)t;
+            switch (c->m_kind) {
+                case 4: { return "c32"; }
+                case 8: { return "c64"; }
+                default: { throw LFortranException("Complex kind not supported"); }
+            }
         }
         case ASR::ttypeType::Logical: {
             return "bool";
@@ -177,16 +213,28 @@ static inline std::string type_to_str_python(const ASR::ttype_t *t)
             return "str";
         }
         case ASR::ttypeType::Tuple: {
-            return "tuple";
+            ASR::Tuple_t *tup = ASR::down_cast<ASR::Tuple_t>(t);
+            std::string result = "tuple[";
+            for (size_t i=0; i<tup->n_type; i++) {
+                result += type_to_str_python(tup->m_type[i]);
+                if (i+1 != tup->n_type) {
+                    result += ", ";
+                }
+            }
+            result += "]";
+            return result;
         }
         case ASR::ttypeType::Set: {
-            return "set";
+            ASR::Set_t *s = (ASR::Set_t *)t;
+            return "set[" + type_to_str_python(s->m_type) + "]";
         }
         case ASR::ttypeType::Dict: {
-            return "dict";
+            ASR::Dict_t *d = (ASR::Dict_t *)t;
+            return "dict[" + type_to_str_python(d->m_key_type) + ", " + type_to_str_python(d->m_value_type) + "]";
         }
         case ASR::ttypeType::List: {
-            return "list";
+            ASR::List_t *l = (ASR::List_t *)t;
+            return "list[" + type_to_str_python(l->m_type) + "]";
         }
         default : throw LFortranException("Not implemented");
     }
@@ -244,11 +292,30 @@ static inline ASR::expr_t* expr_value(ASR::expr_t *f)
         case ASR::exprType::Compare: { return ASR::down_cast<ASR::Compare_t>(f)->m_value; }
         case ASR::exprType::FunctionCall: { return ASR::down_cast<ASR::FunctionCall_t>(f)->m_value; }
         case ASR::exprType::ArrayRef: { return ASR::down_cast<ASR::ArrayRef_t>(f)->m_value; }
+        case ASR::exprType::ArraySize: { return ASR::down_cast<ASR::ArraySize_t>(f)->m_value; }
+        case ASR::exprType::ArrayBound: { return ASR::down_cast<ASR::ArrayBound_t>(f)->m_value; }
         case ASR::exprType::DerivedRef: { return ASR::down_cast<ASR::DerivedRef_t>(f)->m_value; }
         case ASR::exprType::Cast: { return ASR::down_cast<ASR::Cast_t>(f)->m_value; }
         case ASR::exprType::Var: { return EXPR2VAR(f)->m_value; }
-        case ASR::exprType::StrOp: { return ASR::down_cast<ASR::StrOp_t>(f)->m_value; }
         case ASR::exprType::ImpliedDoLoop: { return ASR::down_cast<ASR::ImpliedDoLoop_t>(f)->m_value; }
+        case ASR::exprType::StringLen: { return ASR::down_cast<ASR::StringLen_t>(f)->m_value; }
+        case ASR::exprType::StringItem: { return ASR::down_cast<ASR::StringItem_t>(f)->m_value; }
+        case ASR::exprType::StringSection: { return ASR::down_cast<ASR::StringSection_t>(f)->m_value; }
+        case ASR::exprType::DictLen: { return ASR::down_cast<ASR::DictLen_t>(f)->m_value; }
+        case ASR::exprType::ListLen: { return ASR::down_cast<ASR::ListLen_t>(f)->m_value; }
+        case ASR::exprType::TupleLen: { return ASR::down_cast<ASR::TupleLen_t>(f)->m_value; }
+        case ASR::exprType::SetLen: { return ASR::down_cast<ASR::SetLen_t>(f)->m_value; }
+        case ASR::exprType::StringConcat: { return ASR::down_cast<ASR::StringConcat_t>(f)->m_value; }
+        case ASR::exprType::StringRepeat: { return ASR::down_cast<ASR::StringRepeat_t>(f)->m_value; }
+        case ASR::exprType::ComplexRe: { return ASR::down_cast<ASR::ComplexRe_t>(f)->m_value; }
+        case ASR::exprType::ComplexIm: { return ASR::down_cast<ASR::ComplexIm_t>(f)->m_value; }
+        case ASR::exprType::ListItem: { return ASR::down_cast<ASR::ListItem_t>(f)->m_value; }
+        case ASR::exprType::TupleItem: { return ASR::down_cast<ASR::TupleItem_t>(f)->m_value; }
+        case ASR::exprType::ListSection: { return ASR::down_cast<ASR::ListSection_t>(f)->m_value; }
+        case ASR::exprType::ListPop: { return ASR::down_cast<ASR::ListPop_t>(f)->m_value; }
+        case ASR::exprType::DictPop: { return ASR::down_cast<ASR::DictPop_t>(f)->m_value; }
+        case ASR::exprType::SetPop: { return ASR::down_cast<ASR::SetPop_t>(f)->m_value; }
+        case ASR::exprType::DictItem: // Drop through
         case ASR::exprType::ArrayConstant: // Drop through
         case ASR::exprType::IntegerConstant: // Drop through
         case ASR::exprType::RealConstant: // Drop through
@@ -257,6 +324,7 @@ static inline ASR::expr_t* expr_value(ASR::expr_t *f)
         case ASR::exprType::TupleConstant: // Drop through
         case ASR::exprType::DictConstant: // Drop through
         case ASR::exprType::SetConstant: // Drop through
+        case ASR::exprType::ListConstant: // Drop through
         case ASR::exprType::StringConstant:{ // For all Constants
             return f;
         }
@@ -297,6 +365,12 @@ static inline char *symbol_name(const ASR::symbol_t *f)
         case ASR::symbolType::CustomOperator: {
             return ASR::down_cast<ASR::CustomOperator_t>(f)->m_name;
         }
+        case ASR::symbolType::AssociateBlock: {
+            return ASR::down_cast<ASR::AssociateBlock_t>(f)->m_name;
+        }
+        case ASR::symbolType::Block: {
+            return ASR::down_cast<ASR::Block_t>(f)->m_name;
+        }
         default : throw LFortranException("Not implemented");
     }
 }
@@ -333,6 +407,12 @@ static inline SymbolTable *symbol_parent_symtab(const ASR::symbol_t *f)
         }
         case ASR::symbolType::CustomOperator: {
             return ASR::down_cast<ASR::CustomOperator_t>(f)->m_parent_symtab;
+        }
+        case ASR::symbolType::AssociateBlock: {
+            return ASR::down_cast<ASR::AssociateBlock_t>(f)->m_symtab->parent;
+        }
+        case ASR::symbolType::Block: {
+            return ASR::down_cast<ASR::Block_t>(f)->m_symtab->parent;
         }
         default : throw LFortranException("Not implemented");
     }
@@ -372,6 +452,12 @@ static inline SymbolTable *symbol_symtab(const ASR::symbol_t *f)
         case ASR::symbolType::ClassProcedure: {
             return nullptr;
             //throw LFortranException("ClassProcedure does not have a symtab");
+        }
+        case ASR::symbolType::AssociateBlock: {
+            return ASR::down_cast<ASR::AssociateBlock_t>(f)->m_symtab;
+        }
+        case ASR::symbolType::Block: {
+            return ASR::down_cast<ASR::Block_t>(f)->m_symtab;
         }
         default : throw LFortranException("Not implemented");
     }
@@ -703,7 +789,7 @@ static inline bool is_arg_dummy(int intent) {
 
 static inline bool main_program_present(const ASR::TranslationUnit_t &unit)
 {
-    for (auto &a : unit.m_global_scope->scope) {
+    for (auto &a : unit.m_global_scope->get_scope()) {
         if (ASR::is_a<ASR::Program_t>(*a.second)) return true;
     }
     return false;
@@ -757,7 +843,8 @@ bool is_op_overloaded(ASR::cmpopType op, std::string& intrinsic_op_name,
 
 bool use_overloaded_assignment(ASR::expr_t* target, ASR::expr_t* value,
                                SymbolTable* curr_scope, ASR::asr_t*& asr,
-                               Allocator &al, const Location& loc);
+                               Allocator &al, const Location& loc,
+                               const std::function<void (const std::string &, const Location &)> err);
 
 void set_intrinsic(ASR::symbol_t* sym);
 
@@ -847,6 +934,22 @@ inline bool is_array(ASR::ttype_t *x) {
         }
         case ASR::ttypeType::Pointer: {
             return is_array(ASR::down_cast<ASR::Pointer_t>(x)->m_type);
+            break;
+        }
+        case ASR::ttypeType::List: {
+            n_dims = 0;
+            break;
+        }
+        case ASR::ttypeType::Set: {
+            n_dims = 0;
+            break;
+        }
+        case ASR::ttypeType::Dict: {
+            n_dims = 0;
+            break;
+        }
+        case ASR::ttypeType::Tuple: {
+            n_dims = 0;
             break;
         }
         default:
@@ -981,6 +1084,36 @@ inline bool is_same_type_pointer(ASR::ttype_t* source, ASR::ttype_t* dest) {
             }
 
             inline bool check_equal_type(ASR::ttype_t* x, ASR::ttype_t* y) {
+                if (ASR::is_a<ASR::List_t>(*x) && ASR::is_a<ASR::List_t>(*y)) {
+                    x = ASR::down_cast<ASR::List_t>(x)->m_type;
+                    y = ASR::down_cast<ASR::List_t>(y)->m_type;
+                    return check_equal_type(x, y);
+                } else if (ASR::is_a<ASR::Set_t>(*x) && ASR::is_a<ASR::Set_t>(*y)) {
+                    x = ASR::down_cast<ASR::Set_t>(x)->m_type;
+                    y = ASR::down_cast<ASR::Set_t>(y)->m_type;
+                    return check_equal_type(x, y);
+                } else if (ASR::is_a<ASR::Dict_t>(*x) && ASR::is_a<ASR::Dict_t>(*y)) {
+                    ASR::ttype_t *x_key_type = ASR::down_cast<ASR::Dict_t>(x)->m_key_type;
+                    ASR::ttype_t *y_key_type = ASR::down_cast<ASR::Dict_t>(y)->m_key_type;
+                    ASR::ttype_t *x_value_type = ASR::down_cast<ASR::Dict_t>(x)->m_value_type;
+                    ASR::ttype_t *y_value_type = ASR::down_cast<ASR::Dict_t>(y)->m_value_type;
+                    return (check_equal_type(x_key_type, y_key_type) &&
+                            check_equal_type(x_value_type, y_value_type));
+                } else if (ASR::is_a<ASR::Tuple_t>(*x) && ASR::is_a<ASR::Tuple_t>(*y)) {
+                    ASR::Tuple_t *a = ASR::down_cast<ASR::Tuple_t>(x);
+                    ASR::Tuple_t *b = ASR::down_cast<ASR::Tuple_t>(y);
+                    if(a->n_type != b->n_type) {
+                        return false;
+                    }
+                    bool result = true;
+                    for (size_t i=0; i<a->n_type; i++) {
+                        result = result && check_equal_type(a->m_type[i], b->m_type[i]);
+                        if (!result) {
+                            return false;
+                        }
+                    }
+                    return result;
+                }
                 if( x->type == y->type ) {
                     return true;
                 }
@@ -997,6 +1130,10 @@ ASR::asr_t* symbol_resolve_external_generic_procedure_without_eval(
             ASR::symbol_t *v, Vec<ASR::call_arg_t>& args,
             SymbolTable* current_scope, Allocator& al,
             const std::function<void (const std::string &, const Location &)> err);
+
+// Creates an Cast node and automatically computes the `value` if it can be computed at compile time
+ASR::asr_t* make_Cast_t_value(Allocator &al, const Location &a_loc,
+            ASR::expr_t* a_arg, ASR::cast_kindType a_kind, ASR::ttype_t* a_type);
 
 } // namespace ASRUtils
 

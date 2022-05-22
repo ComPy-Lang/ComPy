@@ -76,8 +76,8 @@ ASR::Module_t* load_module(Allocator &al, SymbolTable *symtab,
     ltypes = false;
     numpy = false;
     LFORTRAN_ASSERT(symtab);
-    if (symtab->scope.find(module_name) != symtab->scope.end()) {
-        ASR::symbol_t *m = symtab->scope[module_name];
+    if (symtab->get_scope().find(module_name) != symtab->get_scope().end()) {
+        ASR::symbol_t *m = symtab->get_symbol(module_name);
         if (ASR::is_a<ASR::Module_t>(*m)) {
             return ASR::down_cast<ASR::Module_t>(m);
         } else {
@@ -121,14 +121,14 @@ ASR::Module_t* load_module(Allocator &al, SymbolTable *symtab,
     // insert into `symtab`
     ASR::Module_t *mod2 = ASRUtils::extract_module(*mod1);
     mod2->m_name = s2c(al, module_name);
-    symtab->scope[module_name] = (ASR::symbol_t*)mod2;
+    symtab->add_symbol(module_name, (ASR::symbol_t*)mod2);
     mod2->m_symtab->parent = symtab;
     mod2->m_intrinsic = intrinsic;
     if (intrinsic) {
         // TODO: I think we should just store intrinsic once, in the module
         // itself
         // Mark each function as intrinsic also
-        for (auto &item : mod2->m_symtab->scope) {
+        for (auto &item : mod2->m_symtab->get_scope()) {
             if (ASR::is_a<ASR::Subroutine_t>(*item.second)) {
                 ASR::Subroutine_t *s = ASR::down_cast<ASR::Subroutine_t>(item.second);
                 if (s->m_abi == ASR::abiType::Source) {
@@ -169,7 +169,7 @@ ASR::symbol_t* import_from_module(Allocator &al, ASR::Module_t *m, SymbolTable *
         throw SemanticError("The symbol '" + cur_sym_name + "' not found in the module '" + mname + "'",
                 loc);
     }
-    if (current_scope->scope.find(cur_sym_name) != current_scope->scope.end()) {
+    if (current_scope->get_scope().find(cur_sym_name) != current_scope->get_scope().end()) {
         throw SemanticError(cur_sym_name + " already defined", loc);
     }
     if (ASR::is_a<ASR::Subroutine_t>(*t)) {
@@ -279,13 +279,6 @@ public:
                 "'" + var_name + "' is undeclared");
             throw SemanticAbort();
         }
-        if( v->type == ASR::symbolType::Variable ) {
-            ASR::Variable_t* v_var = ASR::down_cast<ASR::Variable_t>(v);
-            if( v_var->m_type == nullptr &&
-                v_var->m_intent == ASR::intentType::AssociateBlock ) {
-                return (ASR::asr_t*)(v_var->m_symbolic_value);
-            }
-        }
         return ASR::make_Var_t(al, loc, v);
     }
 
@@ -328,7 +321,7 @@ public:
             );
         std::string sym = fn_name;
 
-        current_scope->scope[sym] = ASR::down_cast<ASR::symbol_t>(fn);
+        current_scope->add_symbol(sym, ASR::down_cast<ASR::symbol_t>(fn));
         ASR::symbol_t *v = ASR::down_cast<ASR::symbol_t>(fn);
 
         // Now we need to add the module `m` with the intrinsic function
@@ -376,21 +369,21 @@ public:
             }
 
             SymbolTable *symtab = current_scope;
-            while (symtab->parent != nullptr && symtab->scope.find(local_sym) == symtab->scope.end()) {
+            while (symtab->parent != nullptr && symtab->get_scope().find(local_sym) == symtab->get_scope().end()) {
                 symtab = symtab->parent;
             }
-            if (symtab->scope.find(local_sym) == symtab->scope.end()) {
+            if (symtab->get_scope().find(local_sym) == symtab->get_scope().end()) {
                 LFORTRAN_ASSERT(ASR::is_a<ASR::ExternalSymbol_t>(*stemp));
                 std::string mod_name = ASR::down_cast<ASR::ExternalSymbol_t>(stemp)->m_module_name;
-                ASR::symbol_t *mt = symtab->scope[mod_name];
+                ASR::symbol_t *mt = symtab->get_symbol(mod_name);
                 ASR::Module_t *m = ASR::down_cast<ASR::Module_t>(mt);
                 stemp = import_from_module(al, m, symtab, mod_name,
                                     remote_sym, local_sym, loc);
                 LFORTRAN_ASSERT(ASR::is_a<ASR::ExternalSymbol_t>(*stemp));
-                symtab->scope[local_sym] = stemp;
+                symtab->add_symbol(local_sym, stemp);
                 s = ASRUtils::symbol_get_past_external(stemp);
             } else {
-                stemp = symtab->scope[local_sym];
+                stemp = symtab->get_symbol(local_sym);
             }
         }
         if (ASR::is_a<ASR::Function_t>(*s)) {
@@ -691,18 +684,43 @@ public:
                     dest_type = ASRUtils::TYPE(ASR::make_Real_t(al, loc,
                         8, nullptr, 0));
                     if (ASRUtils::is_integer(*left_type)) {
-                        left = ASR::down_cast<ASR::expr_t>(ASR::make_Cast_t(
-                            al, left->base.loc, left, ASR::cast_kindType::IntegerToReal, dest_type,
-                            value));
+                        left = ASR::down_cast<ASR::expr_t>(ASRUtils::make_Cast_t_value(
+                            al, left->base.loc, left, ASR::cast_kindType::IntegerToReal, dest_type));
                     }
                     if (ASRUtils::is_integer(*right_type)) {
-                        right = ASR::down_cast<ASR::expr_t>(ASR::make_Cast_t(
-                            al, right->base.loc, right, ASR::cast_kindType::IntegerToReal, dest_type,
-                            value));
+                        right = ASR::down_cast<ASR::expr_t>(ASRUtils::make_Cast_t_value(
+                            al, right->base.loc, right, ASR::cast_kindType::IntegerToReal, dest_type));
                     }
                     left = cast_helper(ASRUtils::expr_type(right), left);
                     right = cast_helper(ASRUtils::expr_type(left), right);
                     dest_type = ASRUtils::expr_type(left);
+                }
+                if (ASRUtils::expr_value(right) != nullptr) {
+                    if (ASRUtils::is_integer(*right_type)) {
+                        int8_t value = ASR::down_cast<ASR::IntegerConstant_t>(ASRUtils::expr_value(right))->m_n;
+                        if (value == 0) {
+                            diag.add(diag::Diagnostic(
+                                "integer division by zero is not allowed",
+                                diag::Level::Error, diag::Stage::Semantic, {
+                                    diag::Label("integer division by zero",
+                                            {right->base.loc})
+                                })
+                            );
+                            throw SemanticAbort();
+                        }
+                    } else if (ASRUtils::is_real(*right_type)) {
+                        double value = ASR::down_cast<ASR::RealConstant_t>(ASRUtils::expr_value(right))->m_r;
+                        if (value == 0.0) {
+                            diag.add(diag::Diagnostic(
+                                "float floor division by zero is not allowed",
+                                diag::Level::Error, diag::Stage::Semantic, {
+                                    diag::Label("float floor division by zero",
+                                            {right->base.loc})
+                                })
+                            );
+                            throw SemanticAbort();
+                        }
+                    }
                 }
                 ASR::symbol_t *fn_div = resolve_intrinsic_function(loc, "_lpython_floordiv");
                 Vec<ASR::call_arg_t> args;
@@ -721,14 +739,39 @@ public:
                 dest_type = ASRUtils::TYPE(ASR::make_Real_t(al, loc,
                     8, nullptr, 0));
                 if (ASRUtils::is_integer(*left_type)) {
-                    left = ASR::down_cast<ASR::expr_t>(ASR::make_Cast_t(
-                        al, left->base.loc, left, ASR::cast_kindType::IntegerToReal, dest_type,
-                        value));
+                    left = ASR::down_cast<ASR::expr_t>(ASRUtils::make_Cast_t_value(
+                        al, left->base.loc, left, ASR::cast_kindType::IntegerToReal, dest_type));
                 }
                 if (ASRUtils::is_integer(*right_type)) {
-                    right = ASR::down_cast<ASR::expr_t>(ASR::make_Cast_t(
-                        al, right->base.loc, right, ASR::cast_kindType::IntegerToReal, dest_type,
-                        value));
+                    if (ASRUtils::expr_value(right) != nullptr) {
+                        int64_t val = ASR::down_cast<ASR::IntegerConstant_t>(ASRUtils::expr_value(right))->m_n;
+                        if (val == 0) {
+                            diag.add(diag::Diagnostic(
+                                "division by zero is not allowed",
+                                diag::Level::Error, diag::Stage::Semantic, {
+                                    diag::Label("division by zero",
+                                            {right->base.loc})
+                                })
+                            );
+                            throw SemanticAbort();
+                        }
+                    }
+                    right = ASR::down_cast<ASR::expr_t>(ASRUtils::make_Cast_t_value(
+                        al, right->base.loc, right, ASR::cast_kindType::IntegerToReal, dest_type));
+                } else if (ASRUtils::is_real(*right_type)) {
+                    if (ASRUtils::expr_value(right) != nullptr) {
+                        double val = ASR::down_cast<ASR::RealConstant_t>(ASRUtils::expr_value(right))->m_r;
+                        if (val == 0.0) {
+                            diag.add(diag::Diagnostic(
+                                "float division by zero is not allowed",
+                                diag::Level::Error, diag::Stage::Semantic, {
+                                    diag::Label("float division by zero",
+                                            {right->base.loc})
+                                })
+                            );
+                            throw SemanticAbort();
+                        }
+                    }
                 }
             }
         } else if((ASRUtils::is_integer(*left_type) || ASRUtils::is_real(*left_type) ||
@@ -740,7 +783,6 @@ public:
             dest_type = ASRUtils::expr_type(left);
         } else if ((right_is_int || left_is_int) && op == ASR::binopType::Mul) {
             // string repeat
-            ASR::stropType ops = ASR::stropType::Repeat;
             int64_t left_int = 0, right_int = 0, dest_len = 0;
             if (right_is_int) {
                 ASR::Character_t *left_type2 = ASR::down_cast<ASR::Character_t>(left_type);
@@ -778,13 +820,17 @@ public:
                 value = ASR::down_cast<ASR::expr_t>(ASR::make_StringConstant_t(
                     al, loc, result, dest_type));
             }
-            tmp = ASR::make_StrOp_t(al, loc, left, ops, right, dest_type, value);
+            if (right_is_int) {
+                tmp = ASR::make_StringRepeat_t(al, loc, left, right, dest_type, value);
+            }
+            else if (left_is_int){
+                tmp = ASR::make_StringRepeat_t(al, loc, right, left, dest_type, value);
+            }
             return;
 
         } else if (ASRUtils::is_character(*left_type) && ASRUtils::is_character(*right_type)
                             && op == ASR::binopType::Add) {
             // string concat
-            ASR::stropType ops = ASR::stropType::Concat;
             ASR::Character_t *left_type2 = ASR::down_cast<ASR::Character_t>(left_type);
             ASR::Character_t *right_type2 = ASR::down_cast<ASR::Character_t>(right_type);
             LFORTRAN_ASSERT(left_type2->n_dims == 0);
@@ -804,8 +850,7 @@ public:
                 value = ASR::down_cast<ASR::expr_t>(ASR::make_StringConstant_t(
                     al, loc, result, dest_type));
             }
-            tmp = ASR::make_StrOp_t(al, loc, left, ops, right, dest_type,
-                                    value);
+            tmp = ASR::make_StringConcat_t(al, loc, left, right, dest_type, value);
             return;
 
         } else if (ASR::is_a<ASR::List_t>(*left_type) && ASR::is_a<ASR::List_t>(*right_type)
@@ -848,7 +893,7 @@ public:
             diag.add(diag::Diagnostic(
                 "Type mismatch in binary operator, the types must be compatible",
                 diag::Level::Error, diag::Stage::Semantic, {
-                    diag::Label("type mismatch (" + ltype + " and " + rtype + ")",
+                    diag::Label("type mismatch ('" + ltype + "' and '" + rtype + "')",
                             {left->base.loc, right->base.loc})
                 })
             );
@@ -1325,10 +1370,10 @@ public:
                                         0,
                                         false, false);
 
-            if (parent_scope->scope.find(mod_name) != parent_scope->scope.end()) {
+            if (parent_scope->get_scope().find(mod_name) != parent_scope->get_scope().end()) {
                 throw SemanticError("Module '" + mod_name + "' already defined", tmp1->loc);
             }
-            parent_scope->scope[mod_name] = ASR::down_cast<ASR::symbol_t>(tmp1);
+            parent_scope->add_symbol(mod_name, ASR::down_cast<ASR::symbol_t>(tmp1));
         }
 
         for (size_t i=0; i<x.n_body; i++) {
@@ -1398,9 +1443,9 @@ public:
                     s2c(al, arg_s), s_intent, init_expr, value, storage_type, arg_type,
                     current_procedure_abi_type, s_access, s_presence,
                     value_attr);
-            current_scope->scope[arg_s] = ASR::down_cast<ASR::symbol_t>(v);
+            current_scope->add_symbol(arg_s, ASR::down_cast<ASR::symbol_t>(v));
 
-            ASR::symbol_t *var = current_scope->scope[arg_s];
+            ASR::symbol_t *var = current_scope->get_symbol(arg_s);
             args.push_back(al, ASRUtils::EXPR(ASR::make_Var_t(al, x.base.base.loc,
                 var)));
         }
@@ -1417,7 +1462,7 @@ public:
             }
             sym_name = "__lpython_overloaded_" + overload_number + "__" + sym_name;
         }
-        if (parent_scope->scope.find(sym_name) != parent_scope->scope.end()) {
+        if (parent_scope->get_scope().find(sym_name) != parent_scope->get_scope().end()) {
             throw SemanticError("Subroutine already defined", tmp->loc);
         }
         ASR::accessType s_access = ASR::accessType::Public;
@@ -1435,11 +1480,11 @@ public:
                     ASR::storage_typeType::Default, type,
                     current_procedure_abi_type, ASR::Public, ASR::presenceType::Required,
                     false);
-                LFORTRAN_ASSERT(current_scope->scope.find(return_var_name) == current_scope->scope.end())
-                current_scope->scope[return_var_name]
-                         = ASR::down_cast<ASR::symbol_t>(return_var);
+                LFORTRAN_ASSERT(current_scope->get_scope().find(return_var_name) == current_scope->get_scope().end())
+                current_scope->add_symbol(return_var_name,
+                        ASR::down_cast<ASR::symbol_t>(return_var));
                 ASR::asr_t *return_var_ref = ASR::make_Var_t(al, x.base.base.loc,
-                    current_scope->scope[return_var_name]);
+                    current_scope->get_symbol(return_var_name));
                 tmp = ASR::make_Function_t(
                     al, x.base.base.loc,
                     /* a_symtab */ current_scope,
@@ -1471,7 +1516,7 @@ public:
                 is_pure, is_module);
         }
         ASR::symbol_t * t = ASR::down_cast<ASR::symbol_t>(tmp);
-        parent_scope->scope[sym_name] = t;
+        parent_scope->add_symbol(sym_name, t);
         current_scope = parent_scope;
         if (overload) {
             overload_defs[x.m_name].push_back(al, t);
@@ -1485,7 +1530,7 @@ public:
             tmp = ASR::make_GenericProcedure_t(al, loc, current_scope, s2c(al, def_name),
                         p.second.p, p.second.size(), ASR::accessType::Public);
             ASR::symbol_t *t = ASR::down_cast<ASR::symbol_t>(tmp);
-            current_scope->scope[def_name] = t;
+            current_scope->add_symbol(def_name, t);
         }
     }
 
@@ -1529,7 +1574,7 @@ public:
         for (auto &remote_sym : mod_symbols) {
             ASR::symbol_t *t = import_from_module(al, m, current_scope, msym,
                                 remote_sym, remote_sym, x.base.base.loc);
-            current_scope->scope[remote_sym] = t;
+            current_scope->add_symbol(remote_sym, t);
         }
 
         tmp = nullptr;
@@ -1634,7 +1679,7 @@ public:
         current_scope = unit->m_global_scope;
         LFORTRAN_ASSERT(current_scope != nullptr);
         if (!main_module) {
-            ASR::Module_t *mod = ASR::down_cast<ASR::Module_t>(current_scope->scope["__main__"]);
+            ASR::Module_t *mod = ASR::down_cast<ASR::Module_t>(current_scope->get_symbol("__main__"));
             current_scope = mod->m_symtab;
             LFORTRAN_ASSERT(current_scope != nullptr);
         }
@@ -1668,7 +1713,7 @@ public:
 
     void visit_FunctionDef(const AST::FunctionDef_t &x) {
         SymbolTable *old_scope = current_scope;
-        ASR::symbol_t *t = current_scope->scope[x.m_name];
+        ASR::symbol_t *t = current_scope->get_symbol(x.m_name);
         if (ASR::is_a<ASR::Subroutine_t>(*t)) {
             handle_fn(x, *ASR::down_cast<ASR::Subroutine_t>(t));
         } else if (ASR::is_a<ASR::Function_t>(*t)) {
@@ -1707,12 +1752,12 @@ public:
                 x.base.base.loc);
         }
 
-        if (current_scope->scope.find(var_name) !=
-                current_scope->scope.end()) {
+        if (current_scope->get_scope().find(var_name) !=
+                current_scope->get_scope().end()) {
             if (current_scope->parent != nullptr) {
                 // Re-declaring a global scope variable is allowed,
                 // otherwise raise an error
-                ASR::symbol_t *orig_decl = current_scope->scope[var_name];
+                ASR::symbol_t *orig_decl = current_scope->get_symbol(var_name);
                 throw SemanticError(diag::Diagnostic(
                     "Symbol is already declared in the same scope",
                     diag::Level::Error, diag::Stage::Semantic, {
@@ -1754,7 +1799,7 @@ public:
                 s2c(al, var_name), s_intent, init_expr, value, storage_type, type,
                 current_procedure_abi_type, s_access, s_presence,
                 value_attr);
-        current_scope->scope[var_name] = ASR::down_cast<ASR::symbol_t>(v);
+        current_scope->add_symbol(var_name, ASR::down_cast<ASR::symbol_t>(v));
 
         tmp = nullptr;
     }
@@ -2209,7 +2254,7 @@ public:
 
     void visit_Return(const AST::Return_t &x) {
         std::string return_var_name = "_lpython_return_variable";
-        if(current_scope->scope.find(return_var_name) == current_scope->scope.end()) {
+        if(current_scope->get_scope().find(return_var_name) == current_scope->get_scope().end()) {
             if (x.m_value) {
                 throw SemanticError("Return type of function is not defined",
                                 x.base.base.loc);
@@ -2220,7 +2265,7 @@ public:
         }
         this->visit_expr(*x.m_value);
         ASR::expr_t *value = ASRUtils::EXPR(tmp);
-        ASR::symbol_t *return_var = current_scope->scope[return_var_name];
+        ASR::symbol_t *return_var = current_scope->get_symbol(return_var_name);
         ASR::asr_t *return_var_ref = ASR::make_Var_t(al, x.base.base.loc, return_var);
         ASR::expr_t *target = ASRUtils::EXPR(return_var_ref);
         ASR::ttype_t *target_type = ASRUtils::expr_type(target);
@@ -2228,8 +2273,8 @@ public:
         if (!ASRUtils::check_equal_type(target_type, value_type)) {
             std::string ltype = ASRUtils::type_to_str_python(target_type);
             std::string rtype = ASRUtils::type_to_str_python(value_type);
-            throw SemanticError("Type Mismatch in return, found (" +
-                    ltype + " and " + rtype + ")", x.base.base.loc);
+            throw SemanticError("Type Mismatch in return, found ('" +
+                    ltype + "' and '" + rtype + "')", x.base.base.loc);
         }
         value = cast_helper(ASRUtils::expr_type(target), value, true);
         ASR::stmt_t *overloaded=nullptr;

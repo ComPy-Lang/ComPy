@@ -214,6 +214,7 @@ public:
     llvm::StructType *complex_type_4, *complex_type_8;
     llvm::StructType *complex_type_4_ptr, *complex_type_8_ptr;
     llvm::PointerType *character_type;
+    llvm::PointerType *list_type;
 
     std::unordered_map<std::uint32_t, std::unordered_map<std::string, llvm::Type*>> arr_arg_type_cache;
 
@@ -532,7 +533,7 @@ public:
                 dertype2parent[der_type_name] = std::string(par_der_type->m_name);
                 member_idx += 1;
             }
-            std::map<std::string, ASR::symbol_t*> scope = der_type->m_symtab->scope;
+            const std::map<std::string, ASR::symbol_t*>& scope = der_type->m_symtab->get_scope();
             for( auto itr = scope.begin(); itr != scope.end(); itr++ ) {
                 ASR::Variable_t* member = (ASR::Variable_t*)(&(itr->second->base));
                 llvm::Type* mem_type = nullptr;
@@ -608,7 +609,7 @@ public:
         if( name2dertype.find(der_type_name) != name2dertype.end() ) {
             der_type_llvm = name2dertype[der_type_name];
         } else {
-            std::map<std::string, ASR::symbol_t*> scope = der_type->m_symtab->scope;
+            const std::map<std::string, ASR::symbol_t*>& scope = der_type->m_symtab->get_scope();
             std::vector<llvm::Type*> member_types;
             int member_idx = 0;
             for( auto itr = scope.begin(); itr != scope.end(); itr++ ) {
@@ -741,6 +742,30 @@ public:
         return CreateLoad(presult);
     }
 
+    llvm::Value* lfortran_strrepeat(llvm::Value* left_arg, llvm::Value* right_arg)
+    {
+        std::string runtime_func_name = "_lfortran_strrepeat";
+        llvm::Function *fn = module->getFunction(runtime_func_name);
+        if (!fn) {
+            llvm::FunctionType *function_type = llvm::FunctionType::get(
+                    llvm::Type::getVoidTy(context), {
+                        character_type->getPointerTo(),
+                        llvm::Type::getInt32Ty(context),
+                        character_type->getPointerTo()
+                    }, false);
+            fn = llvm::Function::Create(function_type,
+                    llvm::Function::ExternalLinkage, runtime_func_name, *module);
+        }
+        llvm::AllocaInst *pleft_arg = builder->CreateAlloca(character_type,
+            nullptr);
+        builder->CreateStore(left_arg, pleft_arg);
+        llvm::AllocaInst *presult = builder->CreateAlloca(character_type,
+            nullptr);
+        std::vector<llvm::Value*> args = {pleft_arg, right_arg, presult};
+        builder->CreateCall(fn, args);
+        return CreateLoad(presult);
+    }
+
     llvm::Value* lfortran_str_len(llvm::Value* str)
     {
         std::string runtime_func_name = "_lfortran_str_len";
@@ -756,6 +781,63 @@ public:
         return builder->CreateCall(fn, {str});
     }
 
+    llvm::Value* lfortran_str_copy(llvm::Value* str, llvm::Value* idx1, llvm::Value* idx2)
+    {
+        std::string runtime_func_name = "_lfortran_str_copy";
+        llvm::Function *fn = module->getFunction(runtime_func_name);
+        if (!fn) {
+            llvm::FunctionType *function_type = llvm::FunctionType::get(
+                    character_type, {
+                        character_type, llvm::Type::getInt32Ty(context), llvm::Type::getInt32Ty(context)
+                    }, false);
+            fn = llvm::Function::Create(function_type,
+                    llvm::Function::ExternalLinkage, runtime_func_name, *module);
+        }
+        return builder->CreateCall(fn, {str, idx1, idx2});
+    }
+
+    llvm::Value* lcompilers_list_init_i32()
+    {
+        std::string runtime_func_name = "_lcompilers_list_init_i32";
+        llvm::Function *fn = module->getFunction(runtime_func_name);
+        if (!fn) {
+            llvm::FunctionType *function_type = llvm::FunctionType::get(
+                    list_type, { }, false);
+            fn = llvm::Function::Create(function_type,
+                    llvm::Function::ExternalLinkage, runtime_func_name, *module);
+        }
+        return builder->CreateCall(fn, {});
+    }
+
+    void lcompilers_list_append_i32(llvm::Value* plist, llvm::Value *item)
+    {
+        std::string runtime_func_name = "_lcompilers_list_append_i32";
+        llvm::Function *fn = module->getFunction(runtime_func_name);
+        if (!fn) {
+            llvm::FunctionType *function_type = llvm::FunctionType::get(
+                    llvm::Type::getVoidTy(context), {
+                        list_type, llvm::Type::getInt32Ty(context)
+                    }, false);
+            fn = llvm::Function::Create(function_type,
+                    llvm::Function::ExternalLinkage, runtime_func_name, *module);
+        }
+        builder->CreateCall(fn, {plist, item});
+    }
+
+    llvm::Value* lcompilers_list_item_i32(llvm::Value* plist, llvm::Value *pos)
+    {
+        std::string runtime_func_name = "_lcompilers_list_item_i32";
+        llvm::Function *fn = module->getFunction(runtime_func_name);
+        if (!fn) {
+            llvm::FunctionType *function_type = llvm::FunctionType::get(
+                    llvm::Type::getInt32Ty(context), {
+                        list_type, llvm::Type::getInt32Ty(context)
+                    }, false);
+            fn = llvm::Function::Create(function_type,
+                    llvm::Function::ExternalLinkage, runtime_func_name, *module);
+        }
+        return builder->CreateCall(fn, {plist, pos});
+    }
 
     // This function is called as:
     // float complex_re(complex a)
@@ -865,28 +947,25 @@ public:
         complex_type_4_ptr = llvm::StructType::create(context, els_4_ptr, "complex_4_ptr");
         complex_type_8_ptr = llvm::StructType::create(context, els_8_ptr, "complex_8_ptr");
         character_type = llvm::Type::getInt8PtrTy(context);
+        list_type = llvm::Type::getInt8PtrTy(context);
 
-        llvm::Type* size_arg = (llvm::Type*)llvm::StructType::create(context, std::vector<llvm::Type*>({
-                                                                                   arr_descr->get_dimension_descriptor_type(true),
-                                                                                    getIntType(4)}), "size_arg");
-        fname2arg_type["size"] = std::make_pair(size_arg, size_arg->getPointerTo());
         llvm::Type* bound_arg = static_cast<llvm::Type*>(arr_descr->get_dimension_descriptor_type(true));
         fname2arg_type["lbound"] = std::make_pair(bound_arg, bound_arg->getPointerTo());
         fname2arg_type["ubound"] = std::make_pair(bound_arg, bound_arg->getPointerTo());
 
         // Process Variables first:
-        for (auto &item : x.m_global_scope->scope) {
+        for (auto &item : x.m_global_scope->get_scope()) {
             if (is_a<ASR::Variable_t>(*item.second)) {
                 visit_symbol(*item.second);
             }
         }
 
         prototype_only = false;
-        for (auto &item : x.m_global_scope->scope) {
+        for (auto &item : x.m_global_scope->get_scope()) {
             if (is_a<ASR::Module_t>(*item.second) &&
                 item.first.find("lfortran_intrinsic_optimization") != std::string::npos) {
                 ASR::Module_t* mod = ASR::down_cast<ASR::Module_t>(item.second);
-                for( auto &moditem: mod->m_symtab->scope ) {
+                for( auto &moditem: mod->m_symtab->get_scope() ) {
                     ASR::symbol_t* sym = ASRUtils::symbol_get_past_external(moditem.second);
                     if (is_a<ASR::Subroutine_t>(*sym)) {
                         visit_Subroutine(*ASR::down_cast<ASR::Subroutine_t>(sym));
@@ -899,7 +978,7 @@ public:
 
         prototype_only = true;
         // Generate function prototypes
-        for (auto &item : x.m_global_scope->scope) {
+        for (auto &item : x.m_global_scope->get_scope()) {
             if (is_a<ASR::Function_t>(*item.second)) {
                 visit_Function(*ASR::down_cast<ASR::Function_t>(item.second));
             }
@@ -915,14 +994,14 @@ public:
         std::vector<std::string> build_order
             = determine_module_dependencies(x);
         for (auto &item : build_order) {
-            LFORTRAN_ASSERT(x.m_global_scope->scope.find(item)
-                != x.m_global_scope->scope.end());
-            ASR::symbol_t *mod = x.m_global_scope->scope[item];
+            LFORTRAN_ASSERT(x.m_global_scope->get_symbol(item)
+                != nullptr);
+            ASR::symbol_t *mod = x.m_global_scope->get_symbol(item);
             visit_symbol(*mod);
         }
 
         // Then do all the procedures
-        for (auto &item : x.m_global_scope->scope) {
+        for (auto &item : x.m_global_scope->get_scope()) {
             if (is_a<ASR::Function_t>(*item.second)
                 || is_a<ASR::Subroutine_t>(*item.second)) {
                 visit_symbol(*item.second);
@@ -930,7 +1009,7 @@ public:
         }
 
         // Then the main program
-        for (auto &item : x.m_global_scope->scope) {
+        for (auto &item : x.m_global_scope->get_scope()) {
             if (is_a<ASR::Program_t>(*item.second)) {
                 visit_symbol(*item.second);
             }
@@ -1024,6 +1103,56 @@ public:
         _Deallocate<ASR::ExplicitDeallocate_t>(x);
     }
 
+    void visit_ListAppend(const ASR::ListAppend_t& x) {
+        ASR::Variable_t *l = ASR::down_cast<ASR::Variable_t>(x.m_a);
+        uint32_t v_h = get_hash((ASR::asr_t*)l);
+        LFORTRAN_ASSERT(llvm_symtab.find(v_h) != llvm_symtab.end());
+        llvm::Value *plist = llvm_symtab[v_h];
+
+        this->visit_expr_wrapper(x.m_ele, true);
+        llvm::Value *ele = tmp;
+
+        ASR::ttype_t *el_type = ASR::down_cast<ASR::List_t>(l->m_type)->m_type;
+        if (is_a<ASR::Integer_t>(*el_type)) {
+            int kind = ASR::down_cast<ASR::Integer_t>(el_type)->m_kind;
+            if (kind == 4) {
+                llvm::Value *plist2 = CreateLoad(plist);
+                lcompilers_list_append_i32(plist2, ele);
+            } else {
+                throw CodeGenError("Integer kind not supported yet in ListAppend", x.base.base.loc);
+            }
+
+        } else {
+            throw CodeGenError("List type not supported yet in ListAppend", x.base.base.loc);
+        }
+
+    }
+
+    void visit_ListItem(const ASR::ListItem_t& x) {
+        ASR::Variable_t *l = ASR::down_cast<ASR::Variable_t>(x.m_a);
+        uint32_t v_h = get_hash((ASR::asr_t*)l);
+        LFORTRAN_ASSERT(llvm_symtab.find(v_h) != llvm_symtab.end());
+        llvm::Value *plist = llvm_symtab[v_h];
+
+        this->visit_expr_wrapper(x.m_pos, true);
+        llvm::Value *pos = tmp;
+
+        ASR::ttype_t *el_type = ASR::down_cast<ASR::List_t>(l->m_type)->m_type;
+        if (is_a<ASR::Integer_t>(*el_type)) {
+            int kind = ASR::down_cast<ASR::Integer_t>(el_type)->m_kind;
+            if (kind == 4) {
+                llvm::Value *plist2 = CreateLoad(plist);
+                tmp = lcompilers_list_item_i32(plist2, pos);
+            } else {
+                throw CodeGenError("Integer kind not supported yet in ListAppend", x.base.base.loc);
+            }
+
+        } else {
+            throw CodeGenError("List type not supported yet in ListAppend", x.base.base.loc);
+        }
+
+    }
+
     void visit_ArrayRef(const ASR::ArrayRef_t& x) {
         if (x.m_value) {
             this->visit_expr_wrapper(x.m_value, true);
@@ -1033,63 +1162,39 @@ public:
         uint32_t v_h = get_hash((ASR::asr_t*)v);
         LFORTRAN_ASSERT(llvm_symtab.find(v_h) != llvm_symtab.end());
         llvm::Value* array = llvm_symtab[v_h];
-        if (is_a<ASR::Character_t>(*x.m_type)
-             && ASR::down_cast<ASR::Character_t>(x.m_type)->n_dims == 0) {
-            // String indexing:
-            if (x.n_args == 1) {
-                LFORTRAN_ASSERT(x.m_args[0].m_left)
-                LFORTRAN_ASSERT(x.m_args[0].m_right)
-                if (ASR::is_a<ASR::Var_t>(*x.m_args[0].m_left)
-                  &&ASR::is_a<ASR::Var_t>(*x.m_args[0].m_right)) {
-                    ASR::Variable_t *l = EXPR2VAR(x.m_args[0].m_left);
-                    ASR::Variable_t *r = EXPR2VAR(x.m_args[0].m_right);
-                    if (l == r) {
-                        this->visit_expr_wrapper(x.m_args[0].m_left, true);
-                        llvm::Value *idx = tmp;
-                        idx = builder->CreateSub(idx, llvm::ConstantInt::get(context, llvm::APInt(32, 1)));
-                        //std::vector<llvm::Value*> idx_vec = {llvm::ConstantInt::get(context, llvm::APInt(32, 0)), idx};
-                        std::vector<llvm::Value*> idx_vec = {idx};
-                        llvm::Value *str = CreateLoad(array);
-                        llvm::Value *p = CreateGEP(str, idx_vec);
-                        // TODO: Currently the string starts at the right location, but goes to the end of the original string.
-                        // We have to allocate a new string, copy it and add null termination.
-
-                        tmp = builder->CreateAlloca(character_type, nullptr);
-                        builder->CreateStore(p, tmp);
-
-                        //tmp = p;
-                    } else {
-                        throw CodeGenError("Only string(a:b) for a==b supported for now.", x.base.base.loc);
-                    }
-                } else {
-                    //throw CodeGenError("Only string(a:b) for a,b variables for now.", x.base.base.loc);
-                    // Use the "right" index for now
-                    this->visit_expr_wrapper(x.m_args[0].m_right, true);
-                    llvm::Value *idx = tmp;
-                    idx = builder->CreateSub(idx, llvm::ConstantInt::get(context, llvm::APInt(32, 1)));
-                    //std::vector<llvm::Value*> idx_vec = {llvm::ConstantInt::get(context, llvm::APInt(32, 0)), idx};
-                    std::vector<llvm::Value*> idx_vec = {idx};
-                    llvm::Value *str = CreateLoad(array);
-                    llvm::Value *p = CreateGEP(str, idx_vec);
-                    // TODO: Currently the string starts at the right location, but goes to the end of the original string.
-                    // We have to allocate a new string, copy it and add null termination.
-
-                    tmp = builder->CreateAlloca(character_type, nullptr);
-                    builder->CreateStore(p, tmp);
-                }
-            } else {
-                throw CodeGenError("Only string(a:b) supported for now.", x.base.base.loc);
-            }
-        } else {
-            // Array indexing:
-            std::vector<llvm::Value*> indices;
-            for( size_t r = 0; r < x.n_args; r++ ) {
-                ASR::array_index_t curr_idx = x.m_args[r];
-                this->visit_expr_wrapper(curr_idx.m_right, true);
-                indices.push_back(tmp);
-            }
-            tmp = arr_descr->get_single_element(array, indices, x.n_args);
+        std::vector<llvm::Value*> indices;
+        for( size_t r = 0; r < x.n_args; r++ ) {
+            ASR::array_index_t curr_idx = x.m_args[r];
+            this->visit_expr_wrapper(curr_idx.m_right, true);
+            indices.push_back(tmp);
         }
+        tmp = arr_descr->get_single_element(array, indices, x.n_args);
+    }
+
+    void visit_StringItem(const ASR::StringItem_t& x) {
+        if (x.m_value) {
+            this->visit_expr_wrapper(x.m_value, true);
+            return;
+        }
+        this->visit_expr_wrapper(x.m_idx, true);
+        llvm::Value *idx = tmp;
+        this->visit_expr_wrapper(x.m_arg, true);
+        llvm::Value *str = tmp;
+        tmp = lfortran_str_copy(str, idx, idx);
+    }
+
+    void visit_StringSection(const ASR::StringSection_t& x) {
+        if (x.m_value) {
+            this->visit_expr_wrapper(x.m_value, true);
+            return;
+        }
+        this->visit_expr_wrapper(x.m_arg, true);
+        llvm::Value *str = tmp;
+        this->visit_expr_wrapper(x.m_start, true);
+        llvm::Value *left = tmp;
+        this->visit_expr_wrapper(x.m_end, true);
+        llvm::Value *right = tmp;
+        tmp = lfortran_str_copy(str, left, right);   
     }
 
     void visit_DerivedRef(const ASR::DerivedRef_t& x) {
@@ -1201,7 +1306,7 @@ public:
             }
             llvm_symtab[h] = ptr;
         } else {
-            throw CodeGenError("Variable type not supported");
+            throw CodeGenError("Variable type not supported", x.base.base.loc);
         }
     }
 
@@ -1230,7 +1335,7 @@ public:
 
         start_module_init_function_prototype(x);
 
-        for (auto &item : x.m_symtab->scope) {
+        for (auto &item : x.m_symtab->get_scope()) {
             if (is_a<ASR::Variable_t>(*item.second)) {
                 ASR::Variable_t *v = down_cast<ASR::Variable_t>(
                         item.second);
@@ -1257,7 +1362,7 @@ public:
 
     void visit_Program(const ASR::Program_t &x) {
         // Generate code for nested subroutines and functions first:
-        for (auto &item : x.m_symtab->scope) {
+        for (auto &item : x.m_symtab->get_scope()) {
             if (is_a<ASR::Function_t>(*item.second)) {
                 ASR::Function_t *v = down_cast<ASR::Function_t>(
                         item.second);
@@ -1311,7 +1416,7 @@ public:
     template<typename T>
     void declare_vars(const T &x) {
         llvm::Value *target_var;
-        for (auto &item : x.m_symtab->scope) {
+        for (auto &item : x.m_symtab->get_scope()) {
             if (is_a<ASR::Variable_t>(*item.second)) {
                 ASR::Variable_t *v = down_cast<ASR::Variable_t>(item.second);
                 uint32_t h = get_hash((ASR::asr_t*)v);
@@ -1467,19 +1572,25 @@ public:
                                     break;
                                 }
                                 case (ASR::ttypeType::Derived) : {
-                                    throw CodeGenError("Pointers for Derived type not implemented yet in conversion");
+                                    throw CodeGenError("Pointers for Derived type not implemented yet in conversion", v->base.base.loc);
                                 }
                                 case (ASR::ttypeType::Logical) : {
                                     type = llvm::Type::getInt1Ty(context);
                                     break;
                                 }
                                 default :
-                                    throw CodeGenError("Type not implemented");
+                                    throw CodeGenError("Type not implemented", v->base.base.loc);
                             }
                             break;
                         }
+                        case (ASR::ttypeType::List) : {
+                            //ASR::List_t* v_type = down_cast<ASR::List_t>(v->m_type);
+                            //ASR::ttype_t *el_type = v_type->m_type;
+                            type = list_type;
+                            break;
+                        }
                         default :
-                            throw CodeGenError("Type not implemented");
+                            throw CodeGenError("Type not implemented", v->base.base.loc);
                     }
                     /*
                     * The following if block is used for converting any
@@ -1577,6 +1688,11 @@ public:
                             } else {
                                 throw CodeGenError("Unsupported len value in ASR");
                             }
+                        } else if (is_a<ASR::List_t>(*v->m_type)) {
+                            // TODO: do a different initialization based on element type
+                            llvm::Value *init_value = lcompilers_list_init_i32();
+                            target_var = ptr;
+                            builder->CreateStore(init_value, target_var);
                         }
                     }
                 }
@@ -1840,7 +1956,7 @@ public:
             llvm::Value *sp_loc = module->getOrInsertGlobal(
                 nested_sp_name, llvm::Type::getInt32Ty(context));
             llvm::Value *sp_val = CreateLoad(sp_loc);
-            for (auto &item : x->m_symtab->scope) {
+            for (auto &item : x->m_symtab->get_scope()) {
                 if (is_a<ASR::Variable_t>(*item.second)) {
                     ASR::Variable_t *v = down_cast<ASR::Variable_t>(
                         item.second);
@@ -1901,7 +2017,7 @@ public:
             builder->SetInsertPoint(dec_sp);
             builder->CreateStore(builder->CreateAdd(builder->getInt32(-1),
                 sp_val), sp_loc);
-            for (auto &item : x->m_symtab->scope) {
+            for (auto &item : x->m_symtab->get_scope()) {
                 if (is_a<ASR::Variable_t>(*item.second)) {
                     ASR::Variable_t *v = down_cast<ASR::Variable_t>(
                         item.second);
@@ -2033,7 +2149,7 @@ public:
             llvm_symtab_fn[h] = F;
 
             // Instantiate (pre-declare) all nested interfaces
-            for (auto &item : x.m_symtab->scope) {
+            for (auto &item : x.m_symtab->get_scope()) {
                 if (is_a<ASR::Function_t>(*item.second)) {
                     ASR::Function_t *v = down_cast<ASR::Function_t>(
                             item.second);
@@ -2106,7 +2222,7 @@ public:
             llvm_symtab_fn[h] = F;
 
             // Instantiate (pre-declare) all nested interfaces
-            for (auto &item : x.m_symtab->scope) {
+            for (auto &item : x.m_symtab->get_scope()) {
                 if (is_a<ASR::Function_t>(*item.second)) {
                     ASR::Function_t *v = down_cast<ASR::Function_t>(
                             item.second);
@@ -2341,50 +2457,7 @@ public:
         } else if( x.m_abi == ASR::abiType::Intrinsic &&
                    x.m_deftype == ASR::deftypeType::Interface ) {
             std::string m_name = x.m_name;
-            if( m_name == "size" ) {
-
-                define_function_entry(x);
-
-                // Defines the size intrinsic's body at LLVM level.
-                ASR::Variable_t *arg = EXPR2VAR(x.m_args[0]);
-                uint32_t h = get_hash((ASR::asr_t*)arg);
-                llvm::Value* llvm_arg = llvm_symtab[h];
-                ASR::Variable_t *ret = EXPR2VAR(x.m_return_var);
-                h = get_hash((ASR::asr_t*)ret);
-                llvm::Value* llvm_ret_ptr = llvm_symtab[h];
-                llvm::Value* dim_des_val = CreateLoad(llvm_utils->create_gep(llvm_arg, 0));
-                llvm::Value* rank = CreateLoad(llvm_utils->create_gep(llvm_arg, 1));
-                builder->CreateStore(llvm::ConstantInt::get(context, llvm::APInt(32, 1)), llvm_ret_ptr);
-
-                llvm::BasicBlock *loophead = llvm::BasicBlock::Create(context, "loop.head");
-                llvm::BasicBlock *loopbody = llvm::BasicBlock::Create(context, "loop.body");
-                llvm::BasicBlock *loopend = llvm::BasicBlock::Create(context, "loop.end");
-                this->current_loophead = loophead;
-                this->current_loopend = loopend;
-
-                llvm::Value* r = builder->CreateAlloca(getIntType(4), nullptr);
-                builder->CreateStore(llvm::ConstantInt::get(context, llvm::APInt(32, 0)), r);
-                // head
-                start_new_block(loophead);
-                llvm::Value *cond = builder->CreateICmpSLT(CreateLoad(r), rank);
-                builder->CreateCondBr(cond, loopbody, loopend);
-
-                // body
-                start_new_block(loopbody);
-                llvm::Value* r_val = CreateLoad(r);
-                llvm::Value* ret_val = CreateLoad(llvm_ret_ptr);
-                llvm::Value* dim_size = arr_descr->get_dimension_size(dim_des_val, r_val);
-                ret_val = builder->CreateMul(ret_val, dim_size);
-                builder->CreateStore(ret_val, llvm_ret_ptr);
-                r_val = builder->CreateAdd(r_val, llvm::ConstantInt::get(context, llvm::APInt(32, 1)));
-                builder->CreateStore(r_val, r);
-                builder->CreateBr(loophead);
-
-                // end
-                start_new_block(loopend);
-
-                define_function_exit(x);
-            } else if( m_name == "lbound" || m_name == "ubound" ) {
+            if( m_name == "lbound" || m_name == "ubound" ) {
                 define_function_entry(x);
 
                 // Defines the size intrinsic's body at LLVM level.
@@ -2421,7 +2494,7 @@ public:
 
     template<typename T>
     void visit_procedures(const T &x) {
-        for (auto &item : x.m_symtab->scope) {
+        for (auto &item : x.m_symtab->get_scope()) {
             if (is_a<ASR::Subroutine_t>(*item.second)) {
                 ASR::Subroutine_t *s = ASR::down_cast<ASR::Subroutine_t>(item.second);
                 visit_Subroutine(*s);
@@ -2514,6 +2587,24 @@ public:
                     nested_global_struct);
             int idx = std::distance(nested_globals.begin(), finder);
             builder->CreateStore(target, llvm_utils->create_gep(ptr, idx));
+        }
+    }
+
+    void visit_AssociateBlockCall(const ASR::AssociateBlockCall_t& x) {
+        LFORTRAN_ASSERT(ASR::is_a<ASR::AssociateBlock_t>(*x.m_m));
+        ASR::AssociateBlock_t* associate_block = ASR::down_cast<ASR::AssociateBlock_t>(x.m_m);
+        declare_vars(*associate_block);
+        for (size_t i = 0; i < associate_block->n_body; i++) {
+            this->visit_stmt(*(associate_block->m_body[i]));
+        }
+    }
+
+    void visit_BlockCall(const ASR::BlockCall_t& x) {
+        LFORTRAN_ASSERT(ASR::is_a<ASR::Block_t>(*x.m_m));
+        ASR::Block_t* block = ASR::down_cast<ASR::Block_t>(x.m_m);
+        declare_vars(*block);
+        for (size_t i = 0; i < block->n_body; i++) {
+            this->visit_stmt(*(block->m_body[i]));
         }
     }
 
@@ -2824,7 +2915,7 @@ public:
         }
     }
 
-    void visit_StrOp(const ASR::StrOp_t &x) {
+    void visit_StringRepeat(const ASR::StringRepeat_t &x) {
         if (x.m_value) {
             this->visit_expr_wrapper(x.m_value, true);
             return;
@@ -2833,16 +2924,30 @@ public:
         llvm::Value *left_val = tmp;
         this->visit_expr_wrapper(x.m_right, true);
         llvm::Value *right_val = tmp;
-        switch (x.m_op) {
-            case ASR::stropType::Concat: {
-                tmp = lfortran_strop(left_val, right_val, "_lfortran_strcat");
-                break;
-            };
-            case ASR::stropType::Repeat: {
-                tmp = lfortran_strop(left_val, right_val, "_lfortran_strrepeat");
-                break;
-            };
+        tmp = lfortran_strrepeat(left_val, right_val);
+    }
+
+    void visit_StringConcat(const ASR::StringConcat_t &x) {
+        if (x.m_value) {
+            this->visit_expr_wrapper(x.m_value, true);
+            return;
         }
+        this->visit_expr_wrapper(x.m_left, true);
+        llvm::Value *left_val = tmp;
+        this->visit_expr_wrapper(x.m_right, true);
+        llvm::Value *right_val = tmp;
+        tmp = lfortran_strop(left_val, right_val, "_lfortran_strcat");
+    }
+
+    void visit_StringLen(const ASR::StringLen_t &x) {
+        if (x.m_value) {
+            this->visit_expr_wrapper(x.m_value, true);
+            return;
+        }
+        this->visit_expr_wrapper(x.m_arg, true);
+        llvm::AllocaInst *parg = builder->CreateAlloca(character_type, nullptr);
+        builder->CreateStore(tmp, parg);
+        tmp = lfortran_str_len(parg);
     }
 
     void visit_BinOp(const ASR::BinOp_t &x) {
@@ -3264,6 +3369,11 @@ public:
             x_v = CreateLoad(CreateGEP(ptr, idx_vec));
         } else {
             x_v = llvm_symtab[x_h];
+            if (x->m_value_attr) {
+                // Already a value, such as value argument to bind(c)
+                tmp = x_v;
+                return;
+            }
         }
         tmp = CreateLoad(x_v);
 
@@ -3341,6 +3451,73 @@ public:
         ASR::ttype_t* curr_type = extract_ttype_t_from_expr(x.m_arg);
         LFORTRAN_ASSERT(curr_type != nullptr)
         arg_kind = ASRUtils::extract_kind_from_ttype_t(curr_type);
+    }
+
+    void visit_ComplexRe(const ASR::ComplexRe_t &x) {
+        this->visit_expr_wrapper(x.m_arg, true);
+        ASR::ttype_t* curr_type = extract_ttype_t_from_expr(x.m_arg);
+        int arg_kind = ASRUtils::extract_kind_from_ttype_t(curr_type);
+        int dest_kind = ASRUtils::extract_kind_from_ttype_t(x.m_type);
+        llvm::Value *re;
+        if (arg_kind == 4 && dest_kind == 4) {
+            // complex(4) -> real(4)
+            re = complex_re(tmp, complex_type_4);
+            tmp = re;
+        } else if (arg_kind == 4 && dest_kind == 8) {
+            // complex(4) -> real(8)
+            re = complex_re(tmp, complex_type_4);
+            tmp = builder->CreateFPExt(re, llvm::Type::getDoubleTy(context));
+        } else if (arg_kind == 8 && dest_kind == 4) {
+            // complex(8) -> real(4)
+            re = complex_re(tmp, complex_type_8);
+            tmp = builder->CreateFPTrunc(re, llvm::Type::getFloatTy(context));
+        } else if (arg_kind == 8 && dest_kind == 8) {
+            // complex(8) -> real(8)
+            re = complex_re(tmp, complex_type_8);
+            tmp = re;
+        } else {
+            std::string msg = "Conversion from " + std::to_string(arg_kind) +
+                              " to " + std::to_string(dest_kind) + " not implemented yet.";
+            throw CodeGenError(msg);
+        }
+    }
+
+    void visit_ComplexIm(const ASR::ComplexIm_t &x) {
+        ASR::ttype_t* curr_type = extract_ttype_t_from_expr(x.m_arg);
+        int arg_kind = ASRUtils::extract_kind_from_ttype_t(curr_type);
+        llvm::Function *fn = nullptr;
+        llvm::Type *ret_type = nullptr, *complex_type = nullptr;
+        llvm::AllocaInst *arg = nullptr;
+        std::string runtime_func_name = "";
+        if (arg_kind == 4) {
+            runtime_func_name = "_lfortran_complex_aimag_32";
+            ret_type = llvm::Type::getFloatTy(context);
+            complex_type = complex_type_4;
+            arg = builder->CreateAlloca(complex_type_4,
+                nullptr);
+        } else {
+             runtime_func_name = "_lfortran_complex_aimag_64";
+            ret_type = llvm::Type::getDoubleTy(context);
+            complex_type = complex_type_8;
+            arg = builder->CreateAlloca(complex_type_8,
+                nullptr);
+        }
+        fn = module->getFunction(runtime_func_name);
+        if (!fn) {
+            llvm::FunctionType *function_type = llvm::FunctionType::get(
+                    llvm::Type::getVoidTy(context), {
+                        complex_type->getPointerTo(),
+                        ret_type->getPointerTo(),
+                    }, true);
+            fn = llvm::Function::Create(function_type,
+                    llvm::Function::ExternalLinkage, runtime_func_name, *module);
+        }
+        this->visit_expr_wrapper(x.m_arg, true);
+        builder->CreateStore(tmp, arg);
+        llvm::AllocaInst *result = builder->CreateAlloca(ret_type, nullptr);
+        std::vector<llvm::Value*> args = {arg, result};
+        builder->CreateCall(fn, args);
+        tmp = CreateLoad(result);
     }
 
     void visit_Cast(const ASR::Cast_t &x) {
@@ -3751,31 +3928,7 @@ public:
             x_abi = sub->m_abi;
         }
         if( x_abi == ASR::abiType::Intrinsic ) {
-            if( name == "size" ) {
-                /*
-                When size intrinsic is called on a fortran array then the above
-                code extracts the dimension descriptor array and its rank from the
-                overall array descriptor. It wraps them into a struct (specifically, arg_struct of type, size_arg here)
-                and passes to LLVM size. So, if you do, size(a) (a is a fortran array), then at LLVM level,
-                @size(%size_arg* %x) is used as call where size_arg
-                is described above.
-                */
-                ASR::Variable_t *arg = EXPR2VAR(x.m_args[0].m_value);
-                uint32_t h = get_hash((ASR::asr_t*)arg);
-                tmp = llvm_symtab[h];
-                llvm::Value* arg_struct = builder->CreateAlloca(fname2arg_type["size"].first, nullptr);
-                llvm::Value* first_ele_ptr = arr_descr->get_pointer_to_dimension_descriptor_array(tmp);
-                llvm::Value* first_arg_ptr = llvm_utils->create_gep(arg_struct, 0);
-                builder->CreateStore(first_ele_ptr, first_arg_ptr);
-                llvm::Value* rank_ptr = llvm_utils->create_gep(arg_struct, 1);
-                builder->CreateStore(arr_descr->get_rank(tmp), rank_ptr);
-                tmp = arg_struct;
-                args.push_back(tmp);
-                llvm::Value* dim = builder->CreateAlloca(getIntType(4));
-                args.push_back(dim);
-                llvm::Value* kind = builder->CreateAlloca(getIntType(4));
-                args.push_back(kind);
-            } else if( name == "lbound" || name == "ubound" ) {
+            if( name == "lbound" || name == "ubound" ) {
                 ASR::Variable_t *arg = EXPR2VAR(x.m_args[0].m_value);
                 uint32_t h = get_hash((ASR::asr_t*)arg);
                 tmp = llvm_symtab[h];
@@ -4279,6 +4432,73 @@ public:
         }
         calling_function_hash = h;
         pop_nested_stack(s);
+    }
+
+    void visit_ArraySize(const ASR::ArraySize_t& x) {
+        if( x.m_value ) {
+            visit_expr_wrapper(x.m_value, true);
+            return ;
+        }
+        visit_expr_wrapper(x.m_v);
+        llvm::Value* llvm_arg = tmp;
+        llvm::Value* dim_des_val = arr_descr->get_pointer_to_dimension_descriptor_array(llvm_arg);
+        if( x.m_dim ) {
+            visit_expr_wrapper(x.m_dim, true);
+            int kind = ASRUtils::extract_kind_from_ttype_t(ASRUtils::expr_type(x.m_dim));
+            tmp = builder->CreateSub(tmp, llvm::ConstantInt::get(context, llvm::APInt(kind * 8, 1)));
+            tmp = arr_descr->get_dimension_size(dim_des_val, tmp);
+            return ;
+        }
+        llvm::Value* rank = arr_descr->get_rank(llvm_arg);
+        llvm::Value* llvm_size = builder->CreateAlloca(getIntType(ASRUtils::extract_kind_from_ttype_t(x.m_type)), nullptr);
+        builder->CreateStore(llvm::ConstantInt::get(context, llvm::APInt(32, 1)), llvm_size);
+
+        llvm::BasicBlock *loophead = llvm::BasicBlock::Create(context, "loop.head");
+        llvm::BasicBlock *loopbody = llvm::BasicBlock::Create(context, "loop.body");
+        llvm::BasicBlock *loopend = llvm::BasicBlock::Create(context, "loop.end");
+        this->current_loophead = loophead;
+        this->current_loopend = loopend;
+
+        llvm::Value* r = builder->CreateAlloca(getIntType(4), nullptr);
+        builder->CreateStore(llvm::ConstantInt::get(context, llvm::APInt(32, 0)), r);
+        // head
+        start_new_block(loophead);
+        llvm::Value *cond = builder->CreateICmpSLT(CreateLoad(r), rank);
+        builder->CreateCondBr(cond, loopbody, loopend);
+
+        // body
+        start_new_block(loopbody);
+        llvm::Value* r_val = CreateLoad(r);
+        llvm::Value* ret_val = CreateLoad(llvm_size);
+        llvm::Value* dim_size = arr_descr->get_dimension_size(dim_des_val, r_val);
+        ret_val = builder->CreateMul(ret_val, dim_size);
+        builder->CreateStore(ret_val, llvm_size);
+        r_val = builder->CreateAdd(r_val, llvm::ConstantInt::get(context, llvm::APInt(32, 1)));
+        builder->CreateStore(r_val, r);
+        builder->CreateBr(loophead);
+
+        // end
+        start_new_block(loopend);
+
+        tmp = CreateLoad(llvm_size);
+    }
+
+    void visit_ArrayBound(const ASR::ArrayBound_t& x) {
+        visit_expr_wrapper(x.m_v);
+        llvm::Value* llvm_arg1 = tmp;
+        llvm::Value* dim_des_val = arr_descr->get_pointer_to_dimension_descriptor_array(llvm_arg1);
+        visit_expr_wrapper(x.m_dim, true);
+        llvm::Value* dim_val = tmp;
+        llvm::Value* const_1 = llvm::ConstantInt::get(context, llvm::APInt(32, 1));
+        dim_val = builder->CreateSub(dim_val, const_1);
+        llvm::Value* dim_struct = arr_descr->get_pointer_to_dimension_descriptor(dim_des_val, dim_val);
+        llvm::Value* res = nullptr;
+        if( x.m_bound == ASR::arrayboundType::LBound ) {
+            res = arr_descr->get_lower_bound(dim_struct);
+        } else if( x.m_bound == ASR::arrayboundType::UBound ) {
+            res = arr_descr->get_upper_bound(dim_struct);
+        }
+        tmp = res;
     }
 
 };

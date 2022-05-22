@@ -16,9 +16,11 @@ configure_file(config.h.in config.h)
 
 set(SRC
     codegen/asr_to_cpp.cpp
+    codegen/asr_to_c.cpp
     codegen/asr_to_py.cpp
     codegen/x86_assembler.cpp
     codegen/asr_to_x86.cpp
+    codegen/asr_to_wasm.cpp
 
     pass/param_to_const.cpp
     pass/do_loops.cpp
