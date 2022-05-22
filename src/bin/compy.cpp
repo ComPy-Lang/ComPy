@@ -291,6 +291,7 @@ int main(int argc, char *argv[])
         app.add_flag("--show-asr", show_asr, "Show ASR for the given file and exit");
         app.add_flag("--show-llvm", show_llvm, "Show LLVM IR for the given file and exit");
         app.add_flag("--indent", compiler_options.indent, "Indented print ASR/AST");
+        app.add_flag("--fast", compiler_options.fast, "Use this to get best performance");
 
         app.get_formatter()->column_width(25);
         CLI11_PARSE(app, argc, argv);
