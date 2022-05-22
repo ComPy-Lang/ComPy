@@ -1,5 +1,5 @@
-#ifndef LPYTHON_SEMANTICS_COMPTIME_EVAL_H
-#define LPYTHON_SEMANTICS_COMPTIME_EVAL_H
+#ifndef COMPY_SEMANTICS_COMPTIME_EVAL_H
+#define COMPY_SEMANTICS_COMPTIME_EVAL_H
 
 #include <complex>
 #include <string>
@@ -19,7 +19,7 @@ namespace LFortran {
 
 struct PythonIntrinsicProcedures {
 
-    const std::string m_builtin = "lpython_builtin";
+    const std::string m_builtin = "builtin_functions";
 
     typedef ASR::expr_t* (*comptime_eval_callback)(Allocator &, const Location &, Vec<ASR::expr_t*> &);
     // Table of intrinsics
@@ -534,4 +534,4 @@ struct PythonIntrinsicProcedures {
 
 } // namespace LFortran
 
-#endif /* LPYTHON_SEMANTICS_COMPTIME_EVAL_H */
+#endif /* COMPY_SEMANTICS_COMPTIME_EVAL_H */

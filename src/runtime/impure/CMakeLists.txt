@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
 
-project(lfortran_runtime_impure C Fortran)
+project(compy_runtime_impure C Fortran)
 
-add_library(lfortran_runtime_impure
+add_library(compy_runtime_impure
     STATIC
-    lfortran_intrinsics.c
-    lfortran_intrinsic_sin_c.c
+    compy_intrinsics.c
+    compy_intrinsic_sin_c.c
 )

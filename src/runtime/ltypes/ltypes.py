@@ -34,7 +34,7 @@ c64 = Type("c64")
 
 def ltype(x):
     """
-    Converts CPython types to LPython types
+    Converts CPython types to ComPy types
     """
     if type(x) == int:
         return i32, i64
@@ -127,11 +127,11 @@ class CTypes:
             return os.path.join(current_dir, "..")
         def get_crtlib_name():
             if platform.system() == "Linux":
-                return "liblpython_runtime.so"
+                return "libcompy_runtime.so"
             elif platform.system() == "Darwin":
-                return "liblpython_runtime.dylib"
+                return "libcompy_runtime.dylib"
             elif platform.system() == "Windows":
-                return "lpython_runtime.dll"
+                return "compy_runtime.dll"
             else:
                 raise NotImplementedError("Platform not implemented")
         def get_crtlib_path():

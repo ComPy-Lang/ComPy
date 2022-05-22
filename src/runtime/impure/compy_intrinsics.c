@@ -9,7 +9,7 @@
 #include <float.h>
 #include <limits.h>
 
-#include "lfortran_intrinsics.h"
+#include "compy_intrinsics.h"
 
 
 LFORTRAN_API double _lfortran_sum(int n, double *v)
@@ -835,11 +835,11 @@ LFORTRAN_API void _lfortran_dp_rand_num(double *x) {
     *x = rand() / (double) RAND_MAX;
 }
 
-LFORTRAN_API int64_t _lpython_open(char *path, char *flags)
+LFORTRAN_API int64_t _compy_open(char *path, char *flags)
 {
     FILE *fd;
     fd = fopen(path, flags);
-    if (!fd) 
+    if (!fd)
     {
         printf("Error in opening the file!\n");
         perror(path);
@@ -848,10 +848,10 @@ LFORTRAN_API int64_t _lpython_open(char *path, char *flags)
     return (int64_t)fd;
 }
 
-LFORTRAN_API char* _lpython_read(int64_t fd, int64_t n)
+LFORTRAN_API char* _compy_read(int64_t fd, int64_t n)
 {
     char *c = (char *) calloc(n, sizeof(char));
-    if (fd < 0) 
+    if (fd < 0)
     {
         printf("Error in reading the file!\n");
         exit(1);
@@ -861,9 +861,9 @@ LFORTRAN_API char* _lpython_read(int64_t fd, int64_t n)
     return c;
 }
 
-LFORTRAN_API void _lpython_close(int64_t fd)
+LFORTRAN_API void _compy_close(int64_t fd)
 {
-    if (fclose((FILE*)fd) != 0) 
+    if (fclose((FILE*)fd) != 0)
     {
         printf("Error in closing the file!\n");
         exit(1);

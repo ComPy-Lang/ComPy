@@ -1,5 +1,5 @@
 set(SRC
-    ../impure/lfortran_intrinsics.c
+    ../impure/compy_intrinsics.c
 )
 add_library(compy_runtime SHARED ${SRC})
 set_target_properties(compy_runtime PROPERTIES

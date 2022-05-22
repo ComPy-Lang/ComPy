@@ -93,9 +93,9 @@ def str(x: i32) -> str:
     pos_to_str: list[str]
     pos_to_str = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
     while x > 0:
-        rev_result += pos_to_str[x - _lpython_floordiv(x, 10)*10]
+        rev_result += pos_to_str[x - _compy_floordiv(x, 10)*10]
         rev_result_len += 1
-        x = _lpython_floordiv(x, 10)
+        x = _compy_floordiv(x, 10)
     pos: i32
     for pos in range(rev_result_len - 1, -1, -1):
         result += rev_result[pos]
@@ -237,7 +237,7 @@ def round(value: f64) -> i32:
     elif f > 0.5:
         return i + 1
     else:
-        if i - _lpython_floordiv(i, 2) * 2 == 0:
+        if i - _compy_floordiv(i, 2) * 2 == 0:
             return i
         else:
             return i + 1
@@ -253,7 +253,7 @@ def round(value: f32) -> i32:
     elif f > 0.5:
         return i + 1
     else:
-        if i - _lpython_floordiv(i, 2) * 2 == 0:
+        if i - _compy_floordiv(i, 2) * 2 == 0:
             return i
         else:
             return i + 1
@@ -301,16 +301,16 @@ def _lfortran_zaimag(x: c64) -> f64:
     pass
 
 @overload
-def _lpython_imag(x: c64) -> f64:
+def _compy_imag(x: c64) -> f64:
     return _lfortran_zaimag(x)
 
 @overload
-def _lpython_imag(x: c32) -> f32:
+def _compy_imag(x: c32) -> f32:
     return _lfortran_caimag(x)
 
 
 @overload
-def _lpython_floordiv(a: f64, b: f64) -> f64:
+def _compy_floordiv(a: f64, b: f64) -> f64:
     r: f64
     r = a/b
     result: i64
@@ -321,7 +321,7 @@ def _lpython_floordiv(a: f64, b: f64) -> f64:
 
 
 @overload
-def _lpython_floordiv(a: f32, b: f32) -> f32:
+def _compy_floordiv(a: f32, b: f32) -> f32:
     r: f32
     r = a/b
     result: i32
@@ -331,7 +331,7 @@ def _lpython_floordiv(a: f32, b: f32) -> f32:
     return float(result-1)
 
 @overload
-def _lpython_floordiv(a: i32, b: i32) -> i32:
+def _compy_floordiv(a: i32, b: i32) -> i32:
     r: f32
     r = a/b
     result: i32
@@ -341,7 +341,7 @@ def _lpython_floordiv(a: i32, b: i32) -> i32:
     return result - 1
 
 @overload
-def _lpython_floordiv(a: i64, b: i64) -> i64:
+def _compy_floordiv(a: i64, b: i64) -> i64:
     r: f64
     r = a/b
     result: i64
@@ -353,19 +353,19 @@ def _lpython_floordiv(a: i64, b: i64) -> i64:
 
 @overload
 def _mod(a: i32, b: i32) -> i32:
-    return a - _lpython_floordiv(a, b)*b
+    return a - _compy_floordiv(a, b)*b
 
 @overload
 def _mod(a: f32, b: f32) -> f32:
-    return a - _lpython_floordiv(a, b)*b
+    return a - _compy_floordiv(a, b)*b
 
 @overload
 def _mod(a: i64, b: i64) -> i64:
-    return a - _lpython_floordiv(a, b)*b
+    return a - _compy_floordiv(a, b)*b
 
 @overload
 def _mod(a: f64, b: f64) -> f64:
-    return a - _lpython_floordiv(a, b)*b
+    return a - _compy_floordiv(a, b)*b
 
 
 @overload
@@ -474,7 +474,7 @@ def _bitwise_rshift(a: i32, b: i32) -> i32:
         raise ValueError("Negative shift count not allowed.")
     i: i32
     i = 2
-    return _lpython_floordiv(a, i**b)
+    return _compy_floordiv(a, i**b)
 
 @overload
 def _bitwise_rshift(a: i64, b: i64) -> i64:
@@ -482,4 +482,4 @@ def _bitwise_rshift(a: i64, b: i64) -> i64:
         raise ValueError("Negative shift count not allowed.")
     i: i64
     i = 2
-    return _lpython_floordiv(a, i**b)
+    return _compy_floordiv(a, i**b)

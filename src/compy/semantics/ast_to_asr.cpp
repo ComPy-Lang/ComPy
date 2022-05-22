@@ -718,7 +718,7 @@ public:
                         }
                     }
                 }
-                ASR::symbol_t *fn_div = resolve_intrinsic_function(loc, "_lpython_floordiv");
+                ASR::symbol_t *fn_div = resolve_intrinsic_function(loc, "_compy_floordiv");
                 Vec<ASR::call_arg_t> args;
                 args.reserve(al, 1);
                 ASR::call_arg_t arg1, arg2;
@@ -728,7 +728,7 @@ public:
                 arg2.m_value = right;
                 args.push_back(al, arg1);
                 args.push_back(al, arg2);
-                tmp = make_call_helper(al, fn_div, current_scope, args, "_lpython_floordiv", loc);
+                tmp = make_call_helper(al, fn_div, current_scope, args, "_compy_floordiv", loc);
                 return;
 
             } else { // real divison in python using (`/`)
@@ -1457,7 +1457,7 @@ public:
             } else {
                 overload_number = std::to_string(overload_defs[sym_name].size());
             }
-            sym_name = "__lpython_overloaded_" + overload_number + "__" + sym_name;
+            sym_name = "__compy_overloaded_" + overload_number + "__" + sym_name;
         }
         if (parent_scope->get_scope().find(sym_name) != parent_scope->get_scope().end()) {
             throw SemanticError("Subroutine already defined", tmp->loc);
@@ -1470,7 +1470,7 @@ public:
         char *bindc_name=nullptr;
         if (x.m_returns) {
             if (AST::is_a<AST::Name_t>(*x.m_returns) || AST::is_a<AST::Subscript_t>(*x.m_returns)) {
-                std::string return_var_name = "_lpython_return_variable";
+                std::string return_var_name = "_compy_return_variable";
                 ASR::ttype_t *type = ast_expr_to_asr_type(x.m_returns->base.loc, *x.m_returns);
                 ASR::asr_t *return_var = ASR::make_Variable_t(al, x.m_returns->base.loc,
                     current_scope, s2c(al, return_var_name), ASRUtils::intent_return_var, nullptr, nullptr,
@@ -2308,7 +2308,7 @@ public:
     }
 
     void visit_Return(const AST::Return_t &x) {
-        std::string return_var_name = "_lpython_return_variable";
+        std::string return_var_name = "_compy_return_variable";
         if(current_scope->get_scope().find(return_var_name) == current_scope->get_scope().end()) {
             if (x.m_value) {
                 throw SemanticError("Return type of function is not defined",
@@ -2710,7 +2710,7 @@ Result<ASR::TranslationUnit_t*> ast_to_asr(Allocator &al,
     if (main_module) {
         // If it is a main module, turn it into a program.
         // Note: we can modify this behavior for interactive mode later
-        pass_wrap_global_stmts_into_program(al, *tu, "_lpython_main_program");
+        pass_wrap_global_stmts_into_program(al, *tu, "_compy_main_program");
         LFORTRAN_ASSERT(asr_verify(*tu));
     }
 

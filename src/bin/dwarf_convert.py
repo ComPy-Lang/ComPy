@@ -2,12 +2,12 @@
 
 """
 This script is used to convert the output of dwarfdump into a file that is easy
-to load into lfortran to lookup filenames and line numbers for a given address.
+to load into compy to lookup filenames and line numbers for a given address.
 Here is how to use it:
 
         cd src/bin
-        llvm-dwarfdump --debug-line lfortran.dSYM > lfortran.dSYM/symbols.txt
-        ./dwarf_convert.py lfortran.dSYM/symbols.txt lfortran.dSYM/lines.txt lfortran.dSYM/lines.dat
+        llvm-dwarfdump --debug-line compy.dSYM > compy.dSYM/symbols.txt
+        ./dwarf_convert.py compy.dSYM/symbols.txt compy.dSYM/lines.txt compy.dSYM/lines.dat
 
 This is meant to be executed at build time.
 
@@ -41,7 +41,7 @@ class Parser:
 
     On macOS (both Intel and ARM based):
 
-        dwarfdump --debug-line src/bin/lfortran.dSYM > symbols.txt
+        dwarfdump --debug-line src/bin/compy.dSYM > symbols.txt
 
     Then parse it using:
 
