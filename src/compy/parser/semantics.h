@@ -158,6 +158,16 @@ static inline arguments_t FUNC_ARGS(Location &l, arg_t* m_args, size_t n_args) {
         FUNC_ARGS(l, args.p, args.n), \
         STMTS(stmts), stmts.size(), \
         nullptr, 0, EXPR(return))
+#define FUNCTION_03(decorator, id, args, stmts, l) \
+        make_FunctionDef_t(p.m_a, l, name2char(id), \
+        FUNC_ARGS(l, args.p, args.n), \
+        STMTS(stmts), stmts.size(), \
+        EXPRS(decorator), decorator.size(), nullptr)
+#define FUNCTION_04(decorator, id, args, return, stmts, l) \
+        make_FunctionDef_t(p.m_a, l, name2char(id), \
+        FUNC_ARGS(l, args.p, args.n), \
+        STMTS(stmts), stmts.size(), \
+        EXPRS(decorator), decorator.size(), EXPR(return))
 
 static inline ast_t* SLICE(Allocator &al, Location &l,
         ast_t *lower, ast_t *upper, ast_t *_step) {

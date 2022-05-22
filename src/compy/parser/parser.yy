@@ -203,6 +203,7 @@ void yyerror(YYLTYPE *yyloc, LFortran::Parser &p, const std::string &msg)
 %type <vec_ast> slice_item_list
 %type <vec_arg> parameter_list_opt
 %type <arg> parameter
+%type <vec_ast> decorators
 %type <vec_ast> sep
 %type <ast> sep1
 
@@ -356,6 +357,11 @@ for_statement
         $$ = FOR_02($2, $4, $7, $11, @$); }
     ;
 
+decorators
+    : decorators "@" expr sep { $$ = $1; LIST_ADD($$, $3); }
+    | "@" expr sep { LIST_NEW($$); LIST_ADD($$, $2); }
+    ;
+
 parameter
     : id { $$ = ARGS_01($1, @$); }
     | id ":" expr { $$ = ARGS_02($1, $3, @$); }
@@ -372,6 +378,10 @@ function_def
         $$ = FUNCTION_01($2, $4, $8, @$); }
     | KW_DEF id "(" parameter_list_opt ")" "->" expr ":"
         sep statements { $$ = FUNCTION_02($2, $4, $7, $10, @$); }
+    | decorators KW_DEF id "(" parameter_list_opt ")" ":" sep statements {
+        $$ = FUNCTION_03($1, $3, $5, $9, @$); }
+    | decorators KW_DEF id "(" parameter_list_opt ")" "->" expr ":"
+        sep statements { $$ = FUNCTION_04($1, $3, $5, $8, $11, @$); }
     ;
 
 slice_item_list
