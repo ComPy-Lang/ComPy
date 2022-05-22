@@ -189,6 +189,10 @@ void yyerror(YYLTYPE *yyloc, LFortran::Parser &p, const std::string &msg)
 %type <ast> augassign_statement
 %type <operator_type> augassign_op
 %type <ast> expression_statement
+%type <ast> import_statement
+%type <vec_ast> module
+%type <alias> module_as_id
+%type <vec_alias> module_item_list
 %type <ast> return_statement
 %type <ast> if_statement
 %type <ast> elif_statement
@@ -252,6 +256,7 @@ single_line_statement
     | ann_assignment_statement
     | augassign_statement
     | expression_statement
+    | import_statement
     | return_statement
     ;
 
@@ -294,6 +299,30 @@ augassign_op
     | "/=" { $$ = OPERATOR(Div, @$); }
     | "%=" { $$ = OPERATOR(Mod, @$); }
     | "**=" { $$ = OPERATOR(Pow, @$); }
+    ;
+
+module
+    : module "." id { $$ = $1; LIST_ADD($$, $3); }
+    | id { LIST_NEW($$); LIST_ADD($$, $1); }
+    ;
+
+module_as_id
+    : module { $$ = MOD_ID_01($1, @$); }
+    | module KW_AS id { $$ = MOD_ID_02($1, $3, @$); }
+    | "*" { $$ = MOD_ID_03("*", @$); }
+    ;
+
+module_item_list
+    : module_item_list "," module_as_id { $$ = $1; PLIST_ADD($$, $3); }
+    | module_as_id { LIST_NEW($$); PLIST_ADD($$, $1); }
+    ;
+
+import_statement
+    : KW_IMPORT module_item_list { $$ = IMPORT_01($2, @$); }
+    | KW_FROM module KW_IMPORT module_item_list {
+        $$ = IMPORT_02($2, $4, @$); }
+    | KW_FROM module KW_IMPORT "(" module_item_list ")" {
+        $$ = IMPORT_02($2, $5, @$); }
     ;
 
 return_statement

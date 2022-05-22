@@ -75,6 +75,35 @@ static inline T** vec_cast(const Vec<ast_t*> &x) {
 #define OPERATOR(op, l) operatorType::op
 #define AUGASSIGN_01(x, op, y, l) make_AugAssign_t(p.m_a, l, EXPR(x), op, EXPR(y))
 
+static inline alias_t *IMPORT_ALIAS_01(Allocator &al, Location &l,
+        char *name, char *asname){
+    alias_t *r = al.allocate<alias_t>();
+    r->loc = l;
+    r->m_name = name;
+    r->m_asname = asname;
+    return r;
+}
+static inline char *mod2char(Allocator &al, Vec<ast_t*> module) {
+    std::string s = "";
+    for (size_t i=0; i<module.size(); i++) {
+        s.append(name2char(module[i]));
+        if (i < module.size()-1)s.append(".");
+    }
+    LFortran::Str str;
+    str.from_str_view(s);
+    return str.c_str(al);
+}
+#define MOD_ID_01(module, l) IMPORT_ALIAS_01(p.m_a, l, \
+        mod2char(p.m_a, module), nullptr)
+#define MOD_ID_02(module, as_id, l) IMPORT_ALIAS_01(p.m_a, l, \
+        mod2char(p.m_a, module), name2char(as_id))
+#define MOD_ID_03(star, l) IMPORT_ALIAS_01(p.m_a, l, \
+        (char *)"*", nullptr)
+
+#define IMPORT_01(names, l) make_Import_t(p.m_a, l, names.p, names.size())
+#define IMPORT_02(module, names, l) make_ImportFrom_t(p.m_a, l, \
+        mod2char(p.m_a, module), names.p, names.size())
+
 #define RETURN_01(l) make_Return_t(p.m_a, l, nullptr)
 #define RETURN_02(e, l) make_Return_t(p.m_a, l, EXPR(e))
 

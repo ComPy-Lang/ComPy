@@ -25,6 +25,9 @@ union YYSTYPE {
     ComPy::AST::arg_t* arg;
     Vec<ComPy::AST::arg_t> vec_arg;
 
+    ComPy::AST::alias_t* alias;
+    Vec<ComPy::AST::alias_t> vec_alias;
+
     ComPy::AST::operatorType operator_type;
 };
 
