@@ -174,6 +174,10 @@ int Tokenizer::lex(Allocator &al, YYSTYPE &yylval, Location &loc, diag::Diagnost
             }
             end { RET(END_OF_FILE); }
             whitespace {
+                if(cur[0] == '#') { continue; }
+                if(last_token == yytokentype::TK_NEWLINE && cur[0] == '\n') {
+                    continue;
+                }
                 if (indent) {
                     indent = false;
                     indent_length.push_back(cur-tok);
@@ -307,7 +311,7 @@ int Tokenizer::lex(Allocator &al, YYSTYPE &yylval, Location &loc, diag::Diagnost
                 RET(TK_INTEGER)
             }
 
-            comment newline { continue; }
+            comment { continue; }
 
             string1 { token_str(yylval.string); RET(TK_STRING) }
             string2 { token_str(yylval.string); RET(TK_STRING) }
