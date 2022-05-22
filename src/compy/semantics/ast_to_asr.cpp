@@ -1114,6 +1114,7 @@ public:
         ASR::expr_t *operand = ASRUtils::EXPR(tmp);
         ASR::unaryopType op;
         switch (x.m_op) {
+            case (AST::unaryopType::Not) : { op = ASR::unaryopType::Not; break; }
             case (AST::unaryopType::UAdd) : { op = ASR::unaryopType::UAdd; break; }
             case (AST::unaryopType::USub) : { op = ASR::unaryopType::USub; break; }
             default : {
@@ -2080,6 +2081,16 @@ public:
                                              key_type, value_type));
         tmp = ASR::make_DictConstant_t(al, x.base.base.loc, keys.p, keys.size(),
                                              values.p, values.size(), type);
+    }
+
+    void visit_While(const AST::While_t &x) {
+        visit_expr(*x.m_test);
+        ASR::expr_t *test = ASRUtils::EXPR(tmp);
+        Vec<ASR::stmt_t*> body;
+        body.reserve(al, x.n_body);
+        transform_stmts(body, x.n_body, x.m_body);
+        tmp = ASR::make_WhileLoop_t(al, x.base.base.loc, test, body.p,
+                body.size());
     }
 
     void visit_Compare(const AST::Compare_t &x) {
