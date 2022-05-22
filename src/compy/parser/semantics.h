@@ -71,6 +71,13 @@ static inline expr_t* EXPR_OPT(const ast_t *f)
 
 #define EXPR_01(e, l) make_Expr_t(p.m_a, l, EXPR(e))
 
+#define PASS(l) make_Pass_t(p.m_a, l)
+#define BREAK(l) make_Break_t(p.m_a, l)
+#define CONTINUE(l) make_Continue_t(p.m_a, l)
+
+#define RAISE_01(l) make_Raise_t(p.m_a, l, nullptr, nullptr)
+#define RAISE_02(exec, l) make_Raise_t(p.m_a, l, EXPR(exec), nullptr)
+
 #define ASSIGNMENT(targets, val, l) make_Assign_t(p.m_a, l, \
         EXPRS(targets), targets.size(), EXPR(val))
 #define TARGET_ID(name, l) make_Name_t(p.m_a, l, \

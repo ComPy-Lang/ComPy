@@ -188,11 +188,15 @@ void yyerror(YYLTYPE *yyloc, LFortran::Parser &p, const std::string &msg)
 %type <ast> target
 %type <ast> augassign_statement
 %type <operator_type> augassign_op
+%type <ast> break_statement
+%type <ast> continue_statement
 %type <ast> expression_statement
 %type <ast> import_statement
 %type <vec_ast> module
 %type <alias> module_as_id
 %type <vec_alias> module_item_list
+%type <ast> pass_statement
+%type <ast> raise_statement
 %type <ast> return_statement
 %type <ast> if_statement
 %type <ast> elif_statement
@@ -259,8 +263,12 @@ single_line_statement
     : assignment_statement
     | ann_assignment_statement
     | augassign_statement
+    | break_statement
+    | continue_statement
     | expression_statement
     | import_statement
+    | pass_statement
+    | raise_statement
     | return_statement
     ;
 
@@ -272,6 +280,22 @@ multi_line_statement
 
 expression_statement
     : expr { $$ = EXPR_01($1, @$); }
+    ;
+
+pass_statement
+    : KW_PASS { $$ = PASS(@$); }
+    ;
+
+break_statement
+    : KW_BREAK { $$ = BREAK(@$); }
+    ;
+
+continue_statement
+    : KW_CONTINUE { $$ = CONTINUE(@$); }
+
+raise_statement
+    : KW_RAISE { $$ = RAISE_01(@$); }
+    | KW_RAISE expr { $$ = RAISE_02($2, @$); }
     ;
 
 target
