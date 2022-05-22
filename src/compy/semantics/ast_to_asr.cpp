@@ -2356,6 +2356,17 @@ public:
         tmp = ASR::make_Exit_t(al, x.base.base.loc);
     }
 
+    void visit_Raise(const AST::Raise_t &x) {
+        ASR::expr_t *code;
+        if (x.m_cause) {
+            visit_expr(*x.m_cause);
+            code = ASRUtils::EXPR(tmp);
+        } else {
+            code = nullptr;
+        }
+        tmp = ASR::make_ErrorStop_t(al, x.base.base.loc, code);
+    }
+
     void visit_Set(const AST::Set_t &x) {
         LFORTRAN_ASSERT(x.n_elts > 0); // type({}) is 'dict'
         Vec<ASR::expr_t*> elements;
