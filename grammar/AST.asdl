@@ -16,7 +16,7 @@ module ComPy
           | If(expr test, stmt* body, stmt* orelse)
 
           | Import(alias* names)
-          | ImportFrom(identifier? module, alias* names, int level)
+          | ImportFrom(identifier? module, alias* names)
 
           | Expr(expr value)
           | Pass | Break | Continue

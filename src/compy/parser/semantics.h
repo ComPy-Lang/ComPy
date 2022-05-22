@@ -56,6 +56,15 @@ static inline T** vec_cast(const Vec<ast_t*> &x) {
 #define STMT(x) (down_cast<stmt_t>(x))
 #define RESULT(x) p.result.push_back(p.m_a, STMT(x))
 
+static inline expr_t* EXPR_OPT(const ast_t *f)
+{
+    if (f) {
+        return EXPR(f);
+    } else {
+        return nullptr;
+    }
+}
+
 #define LIST_NEW(l) l.reserve(p.m_a, 4)
 #define LIST_ADD(l, x) l.push_back(p.m_a, x)
 #define PLIST_ADD(l, x) l.push_back(p.m_a, *x)
@@ -150,6 +159,16 @@ static inline arguments_t FUNC_ARGS(Location &l, arg_t* m_args, size_t n_args) {
         STMTS(stmts), stmts.size(), \
         nullptr, 0, EXPR(return))
 
+static inline ast_t* SLICE(Allocator &al, Location &l,
+        ast_t *lower, ast_t *upper, ast_t *_step) {
+    expr_t* start = EXPR_OPT(lower);
+    expr_t* end = EXPR_OPT(upper);
+    expr_t* step = EXPR_OPT(_step);
+    return make_Slice_t(al, l, start, end, step);
+}
+
+#define SLICE_01(lower, upper, step, l) SLICE(p.m_a, l, lower, upper, step)
+
 Vec<ast_t*> MERGE_EXPR(Allocator &al, ast_t *x, ast_t *y) {
     Vec<ast_t*> v;
     v.reserve(al, 2);
@@ -175,6 +194,17 @@ EXPR(x), cmpopType::op, EXPRS(A2LIST(p.m_a, y)), 1)
 #define CALL_01(func, args, l) make_Call_t(p.m_a, l, \
         EXPR(func), EXPRS(args), args.size())
 
+static inline expr_t* CHECK_TUPLE(expr_t *x) {
+    if(is_a<Tuple_t>(*x) && down_cast<Tuple_t>(x)->n_elts == 1) {
+        return down_cast<Tuple_t>(x)->m_elts[0];
+    } else {
+        return x;
+    }
+}
+#define TUPLE(elts, l) make_Tuple_t(p.m_a, l, \
+        EXPRS(elts), elts.size(), expr_contextType::Load)
+#define SUBSCRIPT_01(value, slice, l) make_Subscript_t(p.m_a, l, \
+        EXPR(value), CHECK_TUPLE(EXPR(slice)), expr_contextType::Load)
 
 
 #endif

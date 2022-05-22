@@ -198,6 +198,9 @@ void yyerror(YYLTYPE *yyloc, LFortran::Parser &p, const std::string &msg)
 %type <ast> elif_statement
 %type <ast> for_statement
 %type <ast> function_def
+%type <ast> tuple_list
+%type <ast> slice_item
+%type <vec_ast> slice_item_list
 %type <vec_arg> parameter_list_opt
 %type <arg> parameter
 %type <vec_ast> sep
@@ -371,6 +374,30 @@ function_def
         sep statements { $$ = FUNCTION_02($2, $4, $7, $10, @$); }
     ;
 
+slice_item_list
+    : slice_item_list "," slice_item { $$ = $1; LIST_ADD($$, $3); }
+    | slice_item { LIST_NEW($$); LIST_ADD($$, $1); }
+
+slice_item
+    : ":"                    { $$ = SLICE_01(nullptr, nullptr, nullptr, @$); }
+    | expr ":"               { $$ = SLICE_01(     $1, nullptr, nullptr, @$); }
+    | ":" expr               { $$ = SLICE_01(nullptr,      $2, nullptr, @$); }
+    | expr ":" expr          { $$ = SLICE_01(     $1,      $3, nullptr, @$); }
+    | ":" ":"                { $$ = SLICE_01(nullptr, nullptr, nullptr, @$); }
+    | ":" ":" expr           { $$ = SLICE_01(nullptr, nullptr,      $3, @$); }
+    | expr ":" ":"           { $$ = SLICE_01(     $1, nullptr, nullptr, @$); }
+    | ":" expr ":"           { $$ = SLICE_01(nullptr,      $2, nullptr, @$); }
+    | expr ":" ":" expr      { $$ = SLICE_01(     $1, nullptr,      $4, @$); }
+    | ":" expr ":" expr      { $$ = SLICE_01(nullptr,      $2,      $4, @$); }
+    | expr ":" expr ":"      { $$ = SLICE_01(     $1,      $3, nullptr, @$); }
+    | expr ":" expr ":" expr { $$ = SLICE_01(     $1,      $3,      $5, @$); }
+    | expr                   { $$ = $1; }
+    ;
+
+tuple_list
+    : slice_item_list { $$ = TUPLE($1, @$); }
+    ;
+
 expr_list_opt
     : expr_list { $$ = $1; }
     | %empty { LIST_NEW($$); }
@@ -389,6 +416,7 @@ expr
     | TK_FALSE { $$ = BOOL(false, @$); }
     | "(" expr ")" { $$ = $2; }
     | id "(" expr_list_opt ")" { $$ = CALL_01($1, $3, @$); }
+    | id "[" tuple_list "]" { $$ = SUBSCRIPT_01($1, $3, @$); }
 
     | expr "+" expr { $$ = BINOP($1, Add, $3, @$); }
     | expr "-" expr { $$ = BINOP($1, Sub, $3, @$); }
