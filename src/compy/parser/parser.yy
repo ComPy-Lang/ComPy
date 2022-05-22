@@ -221,6 +221,7 @@ void yyerror(YYLTYPE *yyloc, LFortran::Parser &p, const std::string &msg)
 %left "%" "/" "*"
 %precedence UNARY
 %right "**"
+%precedence "."
 
 %start units
 
@@ -451,6 +452,7 @@ expr
     | "(" expr ")" { $$ = $2; }
     | id "(" expr_list_opt ")" { $$ = CALL_01($1, $3, @$); }
     | id "[" tuple_list "]" { $$ = SUBSCRIPT_01($1, $3, @$); }
+    | expr "." id { $$ = ATTRIBUTE_REF($1, $3, @$); }
 
     | expr "+" expr { $$ = BINOP($1, Add, $3, @$); }
     | expr "-" expr { $$ = BINOP($1, Sub, $3, @$); }

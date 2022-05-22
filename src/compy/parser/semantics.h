@@ -222,6 +222,7 @@ static inline expr_t* CHECK_TUPLE(expr_t *x) {
         EXPRS(elts), elts.size(), expr_contextType::Load)
 #define SUBSCRIPT_01(value, slice, l) make_Subscript_t(p.m_a, l, \
         EXPR(value), CHECK_TUPLE(EXPR(slice)), expr_contextType::Load)
-
+#define ATTRIBUTE_REF(val, attr, l) make_Attribute_t(p.m_a, l, \
+        EXPR(val), name2char(attr), expr_contextType::Load)
 
 #endif
