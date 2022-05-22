@@ -159,8 +159,8 @@ int Tokenizer::lex(Allocator &al, YYSTYPE &yylval, Location &loc, diag::Diagnost
             exp = [edED][-+]? digit+;
             integer = digit+;
             float = (significand exp?) | (digit+ exp);
-            string1 = '"' ('""'|[^"\x00])* '"';
-            string2 = "'" ("''"|[^'\x00])* "'";
+            string1 = '"' ('\\"'|[^"\x00])* '"';
+            string2 = "'" ("\\'"|[^'\x00])* "'";
             comment = "#" [^\n\x00]*;
 
             * { token_loc(loc);
