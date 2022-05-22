@@ -310,6 +310,11 @@ int main(int argc, char *argv[])
             return 0;
         }
 
+        if (arg_files.size() == 0) {
+            std::cerr << "ComPy interactive prompt is not implemented yet." << std::endl;
+            return 1;
+        }
+
         // TODO: for now we ignore the other filenames, only handle the first:
         std::string arg_file = arg_files[0];
 
