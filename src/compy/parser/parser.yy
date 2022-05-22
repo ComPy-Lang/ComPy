@@ -201,6 +201,9 @@ void yyerror(YYLTYPE *yyloc, LFortran::Parser &p, const std::string &msg)
 
 // Precedence
 
+%left "or"
+%left "and"
+%precedence "not"
 %left "==" "!=" ">=" ">" "<=" "<"
 %left "-" "+"
 %left "%" "/" "*"
@@ -374,6 +377,10 @@ expr
     | expr "<=" expr { $$ = COMPARE($1, LtE, $3, @$); }
     | expr ">" expr { $$ = COMPARE($1, Gt, $3, @$); }
     | expr ">=" expr { $$ = COMPARE($1, GtE, $3, @$); }
+
+    | expr "and" expr { $$ = BOOLOP($1, And, $3, @$); }
+    | expr "or" expr { $$ = BOOLOP($1, Or, $3, @$); }
+    | "not" expr { $$ = UNARY($2, Not, @$); }
     ;
 
 id

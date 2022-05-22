@@ -121,6 +121,16 @@ static inline arguments_t FUNC_ARGS(Location &l, arg_t* m_args, size_t n_args) {
         STMTS(stmts), stmts.size(), \
         nullptr, 0, EXPR(return))
 
+Vec<ast_t*> MERGE_EXPR(Allocator &al, ast_t *x, ast_t *y) {
+    Vec<ast_t*> v;
+    v.reserve(al, 2);
+    v.push_back(al, x);
+    v.push_back(al, y);
+    return v;
+}
+
+#define BOOLOP(x, op, y, l) make_BoolOp_t(p.m_a, l, \
+        boolopType::op, EXPRS(MERGE_EXPR(p.m_a, x, y)), 2)
 #define BINOP(x, op, y, l) make_BinOp_t(p.m_a, l, \
         EXPR(x), operatorType::op, EXPR(y))
 #define UNARY(x, op, l) make_UnaryOp_t(p.m_a, l, unaryopType::op, EXPR(x))
@@ -135,6 +145,7 @@ EXPR(x), cmpopType::op, EXPRS(A2LIST(p.m_a, y)), 1)
 #define BOOL(x, l) make_ConstantBool_t(p.m_a, l, x, nullptr)
 #define CALL_01(func, args, l) make_Call_t(p.m_a, l, \
         EXPR(func), EXPRS(args), args.size())
+
 
 
 #endif

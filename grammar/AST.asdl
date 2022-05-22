@@ -53,7 +53,7 @@ module ComPy
 
     operator = Add | Sub | Mult | Div | Mod | Pow
 
-    unaryop = UAdd | USub
+    unaryop = UAdd | USub | Not
 
     cmpop = Eq | NotEq | Lt | LtE | Gt | GtE
 
