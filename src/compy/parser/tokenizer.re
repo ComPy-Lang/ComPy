@@ -199,6 +199,8 @@ int Tokenizer::lex(Allocator &al, YYSTYPE &yylval, Location &loc, diag::Diagnost
                 continue;
              }
 
+            "\\" newline { continue; }
+
             // Keywords
             'as'       { KW(AS) }
             'assert'   { KW(ASSERT) }
