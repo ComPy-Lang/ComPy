@@ -2549,8 +2549,49 @@ public:
         if (AST::is_a<AST::Name_t>(*x.m_func)) {
             AST::Name_t *n = AST::down_cast<AST::Name_t>(x.m_func);
             call_name = n->m_id;
+        } else if (AST::is_a<AST::Attribute_t>(*x.m_func)) {
+            AST::Attribute_t *at = AST::down_cast<AST::Attribute_t>(x.m_func);
+            if (AST::is_a<AST::Name_t>(*at->m_value)) {
+                AST::Name_t *n = AST::down_cast<AST::Name_t>(at->m_value);
+                std::string mod_name = n->m_id;
+                call_name = at->m_attr;
+                std::string call_name_store = "__" + mod_name + "_" + call_name;
+                ASR::symbol_t *st = nullptr;
+                if (current_scope->get_scope().find(call_name_store) != current_scope->get_scope().end()) {
+                    st = current_scope->get_symbol(call_name_store);
+                } else {
+                    SymbolTable *symtab = current_scope;
+                    while (symtab->parent != nullptr) symtab = symtab->parent;
+                    if (symtab->get_scope().find(mod_name) == symtab->get_scope().end()) {
+                        if (current_scope->get_scope().find(mod_name) != current_scope->get_scope().end()) {
+                            // this case when we have variable and attribute
+                            st = current_scope->get_symbol(mod_name);
+                            Vec<ASR::expr_t*> eles;
+                            eles.reserve(al, x.n_args);
+                            for (size_t i=0; i<x.n_args; i++) {
+                                eles.push_back(al, args[i].m_value);
+                            }
+                            // TODO
+                            // handle_attribute(st, at->m_attr, x.base.base.loc, eles);
+                            return;
+                        }
+                        throw SemanticError("module '" + mod_name + "' is not imported",
+                            x.base.base.loc);
+                    }
+                    ASR::symbol_t *mt = symtab->get_symbol(mod_name);
+                    ASR::Module_t *m = ASR::down_cast<ASR::Module_t>(mt);
+                    st = import_from_module(al, m, current_scope, mod_name,
+                                        call_name, call_name_store, x.base.base.loc);
+                    current_scope->add_symbol(call_name_store, st);
+                }
+                tmp = make_call_helper(al, st, current_scope, args, call_name, x.base.base.loc);
+                return;
+            } else {
+                throw SemanticError("Only Name type supported in Call",
+                    x.base.base.loc);
+            }
         } else {
-            throw SemanticError("Only Name type is supported in Call",
+            throw SemanticError("Only Name or Attribute type supported in Call",
                 x.base.base.loc);
         }
 
@@ -2602,7 +2643,7 @@ public:
                         std::to_string(args.size()) + " given)", x.base.base.loc);
                 }
                 ASR::ttype_t *type = ASRUtils::TYPE(ASR::make_Logical_t(al, x.base.base.loc,
-                                    1, nullptr, 0));
+                                    4, nullptr, 0));
                 ASR::expr_t *arg = args[0].m_value;
                 bool result = false;
                 if (ASR::is_a<ASR::Var_t>(*arg)) {
