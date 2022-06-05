@@ -303,6 +303,7 @@ raise_statement
 
 target
     : id { $$ = TARGET_ID($1, @$); }
+    | id "[" tuple_list "]" { $$ = TARGET_SUBSCRIPT($1, $3, @$); }
     ;
 
 target_list
@@ -461,6 +462,8 @@ expr
     | "(" expr ")" { $$ = $2; }
     | "[" expr_list_opt "]" { $$ = LIST($2, @$); }
     | id "(" expr_list_opt ")" { $$ = CALL_01($1, $3, @$); }
+    | expr "." id "(" expr_list_opt ")" {
+        $$ = CALL_01(ATTRIBUTE_REF($1, $3, @$), $5, @$); }
     | id "[" tuple_list "]" { $$ = SUBSCRIPT_01($1, $3, @$); }
     | expr "." id { $$ = ATTRIBUTE_REF($1, $3, @$); }
 

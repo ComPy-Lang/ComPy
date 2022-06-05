@@ -82,6 +82,9 @@ static inline expr_t* EXPR_OPT(const ast_t *f)
         EXPRS(targets), targets.size(), EXPR(val))
 #define TARGET_ID(name, l) make_Name_t(p.m_a, l, \
         name2char(name), expr_contextType::Store)
+#define TARGET_SUBSCRIPT(value, slice, l) make_Subscript_t(p.m_a, l, \
+        EXPR(value), CHECK_TUPLE(EXPR(slice)), expr_contextType::Store)
+
 
 #define ANNASSIGN_01(x, y, l) make_AnnAssign_t(p.m_a, l, \
         EXPR(x), EXPR(y), nullptr)
