@@ -1,7 +1,6 @@
-def test():
-    a: i32 = 10
-    b: i32 = 20
-    c: i32 = int((2*a**b / 10) + (b - a))
-    print(c)
+def main():
+    x: i32
+    for x in range(5):
+        print(x)
 
-test()
+main()
