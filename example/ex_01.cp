@@ -1,6 +1,6 @@
 def main():
     x: i32
-    for x in range(5):
-        print(x)
+    x = 3 + 5
+    print(x)
 
 main()
